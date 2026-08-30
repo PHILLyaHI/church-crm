@@ -1,0 +1,227 @@
+// Tend — church outreach CRM
+// Postgres, so the same schema runs locally and on a serverless host. Vercel's
+// filesystem is read-only and per-request, so a SQLite file cannot survive
+// there: every write would be lost or refused.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// role: leader | higher_leader | admin
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("leader")
+  leaderId     String?
+  leader       User?     @relation("Reports", fields: [leaderId], references: [id], onDelete: SetNull)
+  reports      User[]    @relation("Reports")
+  timezone     String    @default("Europe/London")
+  sendHour     Int       @default(7)
+  lastSeenAt   DateTime?
+  invitedAt    DateTime?
+  onboardedAt  DateTime?
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  createdAt    DateTime  @default(now())
+
+  people        Person[]       @relation("Owner")
+  notes         Note[]
+  meetings      Meeting[]
+  reminders     Reminder[]
+  notifications Notification[]
+  importBatches ImportBatch[]
+  ownedConfigs  AirtableConfig[] @relation("DefaultOwner")
+
+  @@index([leaderId])
+}
+
+// statusRank 1-8 (see lib/status.ts) · priority high|medium|low
+// source manual|csv|airtable
+model Person {
+  id               String    @id @default(cuid())
+  ownerId          String
+  owner            User      @relation("Owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  name             String
+  phone            String?
+  email            String?
+  statusRank       Int       @default(1)
+  priority         String    @default("medium")
+  intervalDays     Int       @default(14)
+  lastContactAt    DateTime?
+  snoozedUntil     DateTime?
+  remindersPaused  Boolean   @default(false)
+  statusChangedAt  DateTime  @default(now())
+  airtableRecordId String?
+  airtableSyncedAt DateTime?
+  source           String    @default("manual")
+  importBatchId    String?
+  importBatch      ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  createdById      String?
+  createdAt        DateTime  @default(now())
+  archivedAt       DateTime?
+
+  notes      Note[]
+  meetings   Meeting[]
+  attendance Attendance[]
+  contacts   Contact[]
+  reminders  Reminder[]
+  syncEvents SyncEvent[]
+
+  @@index([ownerId])
+  @@index([airtableRecordId])
+}
+
+// kind: note | status_change | system
+model Note {
+  id        String   @id @default(cuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  body      String
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  kind      String   @default("note")
+  fromRank  Int?
+  toRank    Int?
+  createdAt DateTime @default(now())
+
+  @@index([personId, createdAt])
+}
+
+// kind: coffee | call | meal | visit | message | group
+model Meeting {
+  id         String   @id @default(cuid())
+  personId   String
+  person     Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  happenedOn DateTime
+  kind       String   @default("coffee")
+  place      String?
+  minutes    Int?
+  body       String?
+  authorId   String?
+  author     User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([personId, happenedOn])
+}
+
+// state: present | absent | away · serviceDate is always a Sunday
+model Attendance {
+  id          String   @id @default(cuid())
+  personId    String
+  person      Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  serviceDate DateTime
+  state       String
+
+  @@unique([personId, serviceDate])
+  @@index([personId])
+}
+
+// via: logged | note | meeting | import
+model Contact {
+  id         String   @id @default(cuid())
+  personId   String
+  person     Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  happenedAt DateTime @default(now())
+  via        String   @default("logged")
+
+  @@index([personId, happenedAt])
+}
+
+// channel: email | in_app · resolvedBy: contact | snooze | pause
+model Reminder {
+  id         String    @id @default(cuid())
+  personId   String
+  person     Person    @relation(fields: [personId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dueOn      DateTime
+  sentAt     DateTime?
+  channel    String    @default("email")
+  attempt    Int       @default(1)
+  resolvedBy String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, dueOn])
+  @@index([personId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String    @default("followup")
+  body      String
+  href      String?
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([userId, createdAt])
+}
+
+// direction: in | out | conflict | full · result: applied | skipped | conflict
+model SyncEvent {
+  id        String   @id @default(cuid())
+  at        DateTime @default(now())
+  direction String
+  personId  String?
+  person    Person?  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  fromValue String?
+  toValue   String?
+  result    String
+  detail    String?
+
+  @@index([at])
+}
+
+// Single row, id "singleton". mapping is JSON: { "1": "New", "2": "Curious", ... }
+model AirtableConfig {
+  id             String    @id @default("singleton")
+  enabled        Boolean   @default(false)
+  token          String?
+  baseId         String?
+  tableName      String?
+  viewName       String?
+  tendIdField    String    @default("Tend ID")
+  statusField    String    @default("Status")
+  mapping        String    @default("{}")
+  defaultOwnerId String?
+  defaultOwner   User?     @relation("DefaultOwner", fields: [defaultOwnerId], references: [id], onDelete: SetNull)
+  lastSyncAt     DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+// Single row, id "singleton". Church-wide reminder policy.
+model ReminderDefaults {
+  id                  String   @id @default("singleton")
+  defaultIntervalDays Int      @default(14)
+  sendHour            Int      @default(7)
+  digest              Boolean  @default(true)
+  skipSunday          Boolean  @default(true)
+  repeatDays          Int      @default(7)
+  maxAttempts         Int      @default(3)
+  fromName            String   @default("Tend")
+  fromAddress         String   @default("reminders@example.com")
+  updatedAt           DateTime @updatedAt
+}
+
+model ImportBatch {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename  String
+  count     Int       @default(0)
+  createdAt DateTime  @default(now())
+  undoneAt  DateTime?
+
+  people Person[]
+
+  @@index([userId, createdAt])
+}

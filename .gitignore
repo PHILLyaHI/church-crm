@@ -1,0 +1,55 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+# ...but the template belongs in the repo: it documents what has to be set.
+!.env.example
+
+# The local SQLite database. It holds real accounts and password hashes.
+*.db
+*.db-journal
+prisma/dev.db
+
+# The Prisma client is generated, and its query engine is built for whichever
+# platform generated it. Vercel runs `prisma generate` at build instead.
+/src/generated
+
+# vercel
+.vercel
+
+# Playwright MCP scratch output
+.playwright-mcp
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

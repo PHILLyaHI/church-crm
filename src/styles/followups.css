@@ -1,0 +1,170 @@
+/* Follow-ups — two columns of people and nothing else.
+   The rank numerals and initial avatars were cut: order already says who
+   waited longest, and initials beside a name repeat the name. */
+
+/* --- the two columns ----------------------------------------------------- */
+
+.fu-cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s6);
+  align-items: start;
+}
+
+@media (min-width: 1080px) {
+  .fu-cols { grid-template-columns: 1fr 1fr; gap: var(--s5); }
+}
+
+.fu-colhead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: var(--s4);
+  border-bottom: 1px solid var(--rule-2);
+}
+.fu-colhead h2 {
+  font-size: var(--t-sub);
+  font-weight: var(--w-bold);
+  letter-spacing: -.015em;
+}
+.fu-count {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  font-size: var(--t-label);
+  font-weight: var(--w-bold);
+  background: var(--field-2);
+  color: var(--ink-2);
+}
+.fu-hint {
+  margin-left: auto;
+  font-size: var(--t-label);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.fu-none {
+  font-size: var(--t-meta);
+  color: var(--ink-3);
+  max-width: 42ch;
+  padding: var(--s3) 0;
+}
+
+.fu-single { max-width: 560px; }
+.fu-back { margin-top: var(--s5); font-size: var(--t-meta); }
+.fu-held {
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-meta);
+  color: var(--ink-3);
+}
+.fu-held a { color: var(--ink-2); }
+
+/* --- the card, now vertical ---------------------------------------------- */
+
+.fu-cols .fu,
+.fu-single .fu {
+  display: block;
+  padding: var(--s4);
+  margin-bottom: var(--s3);
+}
+
+.fu-top {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+}
+.fu-top .fu-name { flex: 1; min-width: 0; white-space: normal; }
+.fu-top .flag { flex: none; }
+
+.fu-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.fu-when { margin-top: 8px; font-size: var(--t-meta); }
+.fu-cols .fu-note,
+.fu-single .fu-note { margin-top: 10px; max-width: none; }
+
+.fu-act {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+
+/* --- the follow-up form, open in place ----------------------------------- */
+
+.fup {
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule);
+  animation: fup-open .22s var(--ease) both;
+}
+@keyframes fup-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.fup-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+.fup-close { margin-left: auto; width: 28px; padding: 0; }
+
+.fup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+.fup-field { display: block; min-width: 0; }
+.fup-field > .label { display: block; margin-bottom: 5px; }
+.fup-field--wide { grid-column: 1 / -1; }
+.fup-form .input { height: 38px; font-size: var(--t-meta); }
+.fup-form textarea.input { height: auto; }
+
+.fup-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+.fup-foot .t-quiet { flex: 1; font-size: var(--t-label); }
+
+/* On the tinted overdue card the fields still read as fields. */
+.fu.is-over .fup-form .input { background: var(--sheet); }
+.fu.is-over .fup { border-top-color: var(--over-edge); }
+
+/* --- phone --------------------------------------------------------------- */
+
+@media (max-width: 560px) {
+  .fup-grid { grid-template-columns: 1fr; }
+  .fu-act { flex-wrap: wrap; }
+  .fu-act .btn { flex: 1; min-height: 44px; }
+  .fup-form .input { height: 44px; font-size: var(--t-body); }
+}
+
+/* In the thumb zone the floor is right below the trigger, so the menu rises. */
+.menu--up { top: auto; bottom: calc(100% + 6px); }
+.m-thumb .menu-wrap { flex: none; }
+
+/* The card usually leaves the column on save; this covers the moment it has not yet. */
+.fu-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  font-size: var(--t-meta);
+  font-weight: var(--w-bold);
+  color: var(--plot);
+}

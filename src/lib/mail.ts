@@ -1,0 +1,115 @@
+import nodemailer from "nodemailer";
+
+/**
+ * Gmail delivery. Set GMAIL_USER and GMAIL_APP_PASSWORD (a Google App
+ * Password, not the account password). With neither set, mail is written to
+ * the console so the reminder job is still testable offline.
+ */
+
+let cached: nodemailer.Transporter | null = null;
+
+function transport() {
+  if (cached) return cached;
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+  if (!user || !pass) return null;
+  cached = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+  });
+  return cached;
+}
+
+export function mailConfigured() {
+  return Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+}
+
+export async function sendMail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  fromName?: string;
+  fromAddress?: string;
+}) {
+  const from = `${opts.fromName ?? "Tend"} <${opts.fromAddress ?? process.env.GMAIL_USER ?? "reminders@example.com"}>`;
+  const t = transport();
+
+  if (!t) {
+    console.log(
+      `\n[mail not configured — would have sent]\nTo: ${opts.to}\nFrom: ${from}\nSubject: ${opts.subject}\n\n${opts.text}\n`,
+    );
+    return { delivered: false as const };
+  }
+
+  await t.sendMail({ from, to: opts.to, subject: opts.subject, html: opts.html, text: opts.text });
+  return { delivered: true as const };
+}
+
+export type Overdue = { name: string; days: number; personId: string };
+
+/** The reminder digest: one email per leader per day, never one per person. */
+export function reminderEmail(opts: {
+  leaderName: string;
+  lead: Overdue;
+  others: Overdue[];
+  intervalWords: string;
+  appUrl: string;
+  sendHour: number;
+  churchName: string;
+}) {
+  const { lead, others, intervalWords, appUrl, sendHour, churchName } = opts;
+  const hour = `${String(sendHour).padStart(2, "0")}:00`;
+  const subject = `You haven't contacted ${lead.name.split(" ")[0]} for ${intervalWords}`;
+
+  const othersText = others.length
+    ? `\n${others.length === 1 ? "One other is" : `${others.length} others are`} also waiting:\n` +
+      others.map((o) => `  ${o.name} — ${o.days} days`).join("\n") +
+      "\n"
+    : "";
+
+  const text =
+    `You haven't contacted ${lead.name} for ${intervalWords}. That's ${lead.days === 1 ? "a day" : `${lead.days} days`} past the interval you set for them.\n` +
+    othersText +
+    `\nOpen your follow-ups: ${appUrl}/follow-ups\n\n` +
+    `One email a day at ${hour}, and only when someone is overdue. Never on a Sunday.\n` +
+    `${churchName} · Tend`;
+
+  const othersHtml = others.length
+    ? `<p style="margin:0 0 8px;color:#4E574A;font-size:13px">${
+        others.length === 1 ? "One other is" : `${others.length} others are`
+      } also waiting:</p>
+       <table role="presentation" style="width:100%;border:1px solid #D8DFD2;border-radius:8px;border-collapse:separate;border-spacing:0;margin-bottom:24px">
+         ${others
+           .map(
+             (o, i) =>
+               `<tr><td style="padding:10px 12px;font-size:13px;font-weight:640;${i ? "border-top:1px solid #D8DFD2" : ""}">${o.name}</td>
+                <td style="padding:10px 12px;font-size:13px;font-weight:640;color:#B3372A;text-align:right;${i ? "border-top:1px solid #D8DFD2" : ""}">${o.days} days</td></tr>`,
+           )
+           .join("")}
+       </table>`
+    : "";
+
+  const html = `<!doctype html>
+<html><body style="margin:0;background:#EBEFE6;font-family:Archivo,'Segoe UI',Helvetica,Arial,sans-serif;color:#1A2018">
+  <table role="presentation" style="width:100%;border-collapse:collapse"><tr><td align="center" style="padding:32px 16px">
+    <table role="presentation" style="width:100%;max-width:560px;background:#fff;border:1px solid #C2CBBA;border-radius:12px;border-collapse:separate;overflow:hidden">
+      <tr><td style="background:#164A2E;color:#E9F0E6;padding:16px 24px;font-size:17px;font-weight:640;letter-spacing:-.02em">Tend</td></tr>
+      <tr><td style="padding:24px">
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.5">
+          You haven't contacted <b>${lead.name}</b> for ${intervalWords}. That's
+          ${lead.days === 1 ? "a day" : `${lead.days} days`} past the interval you set for them.
+        </p>
+        ${othersHtml}
+        <a href="${appUrl}/follow-ups" style="display:inline-block;height:40px;line-height:40px;padding:0 18px;border-radius:8px;background:#164A2E;color:#E9F0E6;font-weight:640;text-decoration:none;font-size:15px">Open your follow-ups</a>
+      </td></tr>
+      <tr><td style="padding:12px 24px 20px;border-top:1px solid #D8DFD2;font-size:11px;color:#616C57;line-height:1.6">
+        One email a day at ${hour}, and only when someone is overdue. Never on a Sunday.<br>
+        ${churchName} · Tend · <a href="${appUrl}/admin/reminders" style="color:#215E7C">Change when these arrive</a>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+  return { subject, text, html };
+}

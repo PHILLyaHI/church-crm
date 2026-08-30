@@ -1,0 +1,6 @@
+Ref,Name,Age,Phone,Status,Home group,Notes
+001,Daniel,34,07700 900001,Seeking,Tuesday,Same first name as someone already on your list
+002,Clara Winslow,29,07700 900002,attends sometimes,Thursday,
+003,Clara Winslow,29,07700 900002,attends sometimes,Thursday,Duplicate row on purpose
+004,Femi Adebayo,41,,visited,,Came with Clara
+005,,,07700 900005,seeking,,Row with no name on purpose

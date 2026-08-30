@@ -1,0 +1,40 @@
+/* People screens — the few rules the shared system does not already carry.
+   Nothing here restyles a shared class outside these two routes. */
+
+/* The plot plan is drawn behind the whole content column. The shell owns
+   .content, so the page marks itself and the ground is painted from there. */
+/* The overdue count keeps its alarm colour under the title, as it does in it. */
+.page-head .sub .over-n { color: var(--over); font-weight: var(--w-bold); }
+
+/* Phone: the filter strip sits flush under the green header. */
+@media (max-width: 899px) {
+  .plot-page > .m-chips { margin: calc(var(--s4) * -1) -16px var(--s4); }
+}
+
+/* The whole row opens the person — the shell's stretch link carries it. A
+   z-index:auto positioned cell paints over every EARLIER cell regardless of
+   what it contains, so only the two cells that hold a real control (the
+   Sunday quick-mark, the log-contact action) get lifted above the link.
+   Every other cell stays static and lets the click fall through to it. */
+.plot-page tr.rowlink { position: relative; }
+.plot-page tr.rowlink > td.rowlink-cell { position: static; }
+.plot-page tr.rowlink > td.td-live,
+.plot-page tr.rowlink > td:last-child { position: relative; }
+
+/* The ground is darker than the sheet by a clear step, so the table edge reads
+   as an edge rather than as a change of shade. */
+.content:has(> .plot-page) {
+  background-color: #DFE5D8;
+  background-image:
+    linear-gradient(to right,  rgba(22, 74, 46, .06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(22, 74, 46, .06) 1px, transparent 1px),
+    linear-gradient(to right,  rgba(22, 74, 46, .12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(22, 74, 46, .12) 1px, transparent 1px);
+  background-size: 8px 8px, 8px 8px, 32px 32px, 32px 32px;
+}
+.plot-page .sheet { border-color: var(--rule-2); box-shadow: var(--lift-2); }
+.plot-page thead th { background: #F2F5EF; color: var(--ink-2); border-bottom: 1px solid var(--rule-2); }
+.plot-page tbody tr:nth-child(even):not(.is-over) { background: #FAFCF8; }
+.plot-page tbody tr.rowlink:hover { background: #EDF3E9; }
+.plot-page .fchip { border-color: #B4C0AA; }
+.plot-page .pcard { border-color: var(--rule-2); box-shadow: var(--lift-1); }

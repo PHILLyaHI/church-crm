@@ -1,0 +1,78 @@
+/* Admin and Add people — only what the shared sheet does not already cover.
+   Every other class on these screens comes from globals.css, untouched. */
+
+/* The section strip runs the full width of the content column. */
+.admin-subnav { margin: 0 calc(var(--s5) * -1) var(--s5); overflow-x: auto; }
+.admin-subnav::-webkit-scrollbar { display: none; }
+
+/* Add people: two ways in, side by side on a desk. The mapping spans both. */
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); align-items: start; }
+.add-grid > .add-span { grid-column: 1 / -1; }
+
+/* Inside a grid the gap already separates the sheets. Without this the second
+   column inherits the stacking margin and sits lower than the first. */
+.admin-grid > .sheet + .sheet,
+.add-grid > .sheet + .sheet { margin-top: 0; }
+
+/* A CSV value shown exactly as it was written, next to the step it becomes. */
+.valmap { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: var(--t-meta); color: var(--ink-2); }
+.valmap code {
+  font-family: inherit; background: var(--field); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 1px 5px;
+}
+
+/* Not connected: the same indicator, with the light off. */
+.sync-status--off { color: var(--ink-3); }
+.sync-status--off i { background: var(--rule-2); box-shadow: 0 0 0 3px rgba(31,38,32,.06); }
+
+/* Phone: the sheet grids stack rather than crush, and one panel shows at a time. */
+@media (max-width: 899px) {
+  .admin-subnav { margin: 0 -16px var(--s4); }
+  .two-col-e, .grid-2, .add-grid, .hier { grid-template-columns: 1fr; }
+  .add-grid > [data-active="false"] { display: none; }
+  .hier-link { display: none; }
+  .map-arrow { display: none; }
+  .map-sample span { max-width: none; }
+  .banner { flex-wrap: wrap; }
+  .banner .right { margin-left: 0; width: 100%; }
+
+  /* Each column becomes one block with room to breathe: the header it came
+     from, the values under it, then what it becomes. Stacked at 12px they
+     read as one undifferentiated list. */
+  .maprow { grid-template-columns: 1fr; gap: var(--s3); padding: var(--s5) 0; }
+  .maprow select.input { height: 44px; font-size: var(--t-body); }
+  .mapcol .csvname { font-size: var(--t-meta); }
+  .map-sample { margin-top: 4px; }
+
+  /* The file it came from is the subject of this card, not a note beside the
+     heading — on a phone it gets the full width under it. */
+  .sheet-head.wrap { flex-wrap: wrap; }
+  .filecard-slot { margin-left: 0; width: 100%; margin-top: var(--s3); }
+  .filecard { width: 100%; }
+
+  /* Stacked, the banner needs its action set apart rather than butted up.
+     The glyph stays on the first line of the message rather than orphaning
+     itself on a row of its own. */
+  .banner { align-items: flex-start; gap: 10px var(--s3); padding: var(--s4); }
+  .banner > .i, .banner > svg { flex: none; }
+  .banner > span:not(.right) { flex: 1 1 0; min-width: 0; }
+  .banner .right { padding-top: var(--s3); border-top: 1px solid rgba(22,74,46,.14); }
+  .banner .right .btn { padding-left: 0; }
+
+  /* One value per line beats a wrapped run of them at this width. */
+  .valmap { flex-direction: column; gap: 6px; }
+
+  /* The closing bar: what happens, then the two ways to answer. Left as one
+     flex row it wrapped into a 132px tangle of count, pickers and buttons. */
+  .add-span .row.wrap { display: grid; grid-template-columns: 1fr; gap: var(--s3); }
+  .add-span .row.wrap > label { display: flex; justify-content: space-between; align-items: center; }
+  .add-span .row.wrap > label .input { width: 148px; flex: none; }
+  .add-span .row.wrap > .push { margin-left: 0; display: grid; gap: var(--s2); }
+  .add-span .row.wrap > .push > .t-quiet {
+    order: -1; padding-bottom: var(--s2); border-bottom: 1px solid var(--rule);
+  }
+  /* The thumb bar already carries this action; two identical primary buttons
+     on one screen make the reader choose between the same thing twice. */
+  .add-span .row.wrap > .push > .btn--primary { display: none; }
+  .add-span .row.wrap > .push > .btn--quiet { justify-self: start; padding-left: 0; }
+}
