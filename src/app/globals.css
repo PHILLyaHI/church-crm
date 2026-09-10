@@ -233,9 +233,13 @@ b, strong { font-weight: var(--w-bold); }
 .sheet-body { padding: var(--s4); }
 .sheet + .sheet { margin-top: var(--s4); }
 
+/* A field's name has to be readable before its answer matters. At 11px,
+   uppercase and widely tracked, --ink-3 was legible but faint; --ink-2 is
+   about 7:1 on a sheet, and the tighter tracking stops it reading as a
+   decorative rule of letters. */
 .label {
-  font-size: var(--t-label); letter-spacing: .11em; text-transform: uppercase;
-  color: var(--ink-3); font-weight: var(--w-bold);
+  font-size: var(--t-label); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-2); font-weight: var(--w-bold);
 }
 
 thead th {
@@ -381,6 +385,38 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 .ladder-pick [aria-pressed="true"] .nm { color: var(--plot-ink); font-weight: var(--w-bold); }
 .ladder-pick [aria-pressed="true"] .rk { color: var(--plot-ink-2); }
 .ladder-rail { height: 3px; background: var(--rule-2); border-radius: 2px; margin-top: 0; }
+
+/* The same eight steps read as a column. Side by side they become eight
+   narrow towers you scan left to right while the labels shrink to fit; in a
+   column each step is a full line at full size, and "further along" is down
+   the page — the order you already read in. */
+.ladder-rows { display: flex; flex-direction: column; gap: 4px; }
+.ladder-rows button {
+  display: flex; align-items: center; gap: var(--s3); width: 100%;
+  padding: 11px var(--s3); text-align: left;
+  border: 1px solid var(--rule-2); border-radius: var(--r); background: var(--sheet);
+  transition: background .14s var(--ease), border-color .14s var(--ease);
+}
+.ladder-rows button:hover { background: #F2F6EF; border-color: #AEB9A5; }
+.ladder-rows .rk {
+  flex: none; width: 24px; height: 24px; border-radius: 6px;
+  display: grid; place-items: center;
+  background: var(--field); color: var(--ink-3);
+  font-size: var(--t-label); font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
+}
+.ladder-rows .nm { font-size: var(--t-body); color: var(--ink); flex: 1; min-width: 0; }
+/* Steps already passed: tinted, so the ladder shows how far along they are. */
+.ladder-rows .done { background: #EEF4EC; border-color: #CBDBC6; }
+.ladder-rows .done .rk { background: #DCE7DA; color: var(--plot); }
+.ladder-rows .done .nm { color: var(--plot); }
+.ladder-rows [aria-pressed="true"] {
+  background: var(--plot); border-color: var(--plot); box-shadow: var(--lift-1);
+}
+.ladder-rows [aria-pressed="true"] .rk { background: var(--plot-lift); color: var(--plot-ink); }
+.ladder-rows [aria-pressed="true"] .nm { color: var(--plot-ink); font-weight: var(--w-bold); }
+/* The tick only ever appears on the step that is chosen. */
+.ladder-rows .tick { flex: none; opacity: 0; color: var(--plot-ink); stroke-width: 2.4; }
+.ladder-rows [aria-pressed="true"] .tick { opacity: 1; }
 
 /* 5c. Status chip — rank numeral plus name. Three tints, not eight. */
 .chip {
@@ -1218,7 +1254,14 @@ tbody tr.logged, .pcard.logged { animation: settle .42s var(--ease) forwards; }
   text-transform: uppercase; color: var(--plot);
 }
 .clog-body { flex: 1; min-width: 0; }
-.clog-when { font-size: var(--t-meta); color: var(--ink-3); }
+/* The kind chip and the first line of the entry are one row to the eye, so
+   they share a height and each centres its own text inside it. Left to their
+   natural heights the chip sat a couple of pixels off the line beside it. */
+.clog-kind { min-height: 26px; display: inline-flex; align-items: center; justify-content: center; }
+.clog-when {
+  font-size: var(--t-meta); color: var(--ink-3);
+  min-height: 26px; display: flex; align-items: center; flex-wrap: wrap;
+}
 .clog-said { margin-top: 4px; font-size: var(--t-body); color: var(--ink); }
 
 /* This week's box in the list band: a real button, sized to match its

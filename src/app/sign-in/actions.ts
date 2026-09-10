@@ -54,13 +54,18 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
   const taken = await db.user.findUnique({ where: { email }, select: { id: true } });
   if (taken) return { field: "email", message: "That email already has an account. Sign in instead." };
 
+  // Somebody has to be able to reach Admin, and only an admin can promote
+  // anyone — so on an empty database the first account through the door is
+  // the admin. Every account after it is an ordinary leader.
+  const first = (await db.user.count()) === 0;
+
   try {
     await db.user.create({
       data: {
         name,
         email,
         passwordHash: await bcrypt.hash(password, 10),
-        role: "leader",
+        role: first ? "admin" : "leader",
         // Nobody above them until an admin says so.
         leaderId: null,
       },
