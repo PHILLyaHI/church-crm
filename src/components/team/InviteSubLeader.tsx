@@ -10,7 +10,13 @@ export function ShareLink({ link }: { link: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <span className="share">
-      <input className="input share-field" value={link} readOnly onFocus={(e) => e.currentTarget.select()} aria-label="Invitation link" />
+      <input
+        className="input share-field"
+        value={link}
+        readOnly
+        onFocus={(e) => e.currentTarget.select()}
+        aria-label="Invitation link"
+      />
       <button
         className="btn btn--ghost btn--sm"
         type="button"
@@ -24,8 +30,13 @@ export function ShareLink({ link }: { link: string }) {
           }
         }}
       >
-        <Icon name="check" size="sm" style={{ opacity: copied ? 1 : 0, width: copied ? undefined : 0 }} />
-        {copied ? "Copied" : "Copy"}
+        {copied ? (
+          <>
+            <Icon name="check" size="sm" /> Copied
+          </>
+        ) : (
+          "Copy"
+        )}
       </button>
     </span>
   );
@@ -42,26 +53,24 @@ export function InviteSubLeader() {
   return (
     <>
       {state?.ok && (
-        <div className="banner banner--ok mb-4" style={{ flexWrap: "wrap" }}>
-          <Icon name="check" />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            {state.delivered ? (
-              <>
-                <b>Invitation sent to {state.email}.</b>{" "}
-                {state.existing
-                  ? "They already have an account: the link signs them in and joins them to your team."
-                  : "When they create an account from the link, they will be on your team."}
-              </>
-            ) : (
-              <>
-                <b>Invitation ready for {state.email}.</b> Email is not set up on this server, so
-                nothing was sent — give them this link instead. It works for 14 days.
-              </>
-            )}
+        <div className="invite-done mb-4" role="status">
+          <span className="invite-done-mark">
+            <Icon name="check" />
           </span>
-          <span style={{ width: "100%" }}>
+          <div className="invite-done-body">
+            <b className="invite-done-title">
+              {state.delivered ? "Invitation sent to " : "Invitation ready for "}
+              {state.email}
+            </b>
+            <p className="invite-done-note">
+              {state.delivered
+                ? state.existing
+                  ? "They already have an account. The link in the email signs them in and joins them to your team."
+                  : "When they create an account from the link in the email, they will be on your team."
+                : "Email is not set up on this server, so nothing was sent. Give them this link instead — it works for 14 days."}
+            </p>
             <ShareLink link={state.link} />
-          </span>
+          </div>
         </div>
       )}
       {state && !state.ok && (

@@ -150,7 +150,7 @@ export function FirstPerson({ variant, extra }: Props) {
               <span className="label" style={{ display: "block", marginBottom: 8 }}>
                 Where are they now?
               </span>
-              <div className="ladder-rows">
+              <div className="ladder-pick">
                 {LADDER.map((s) => (
                   <button
                     key={s.rank}
@@ -161,10 +161,10 @@ export function FirstPerson({ variant, extra }: Props) {
                   >
                     <span className="rk num">{s.rank}</span>
                     <span className="nm">{s.name}</span>
-                    <Icon name="check" size="sm" className="tick" />
                   </button>
                 ))}
               </div>
+              <div className="ladder-rail" />
             </div>
 
             <div className="field">
@@ -182,7 +182,7 @@ export function FirstPerson({ variant, extra }: Props) {
         </div>
       </section>
 
-      <div>{extra}</div>
+      {extra}
     </>
   );
 }

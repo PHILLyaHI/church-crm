@@ -386,38 +386,6 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 .ladder-pick [aria-pressed="true"] .rk { color: var(--plot-ink-2); }
 .ladder-rail { height: 3px; background: var(--rule-2); border-radius: 2px; margin-top: 0; }
 
-/* The same eight steps read as a column. Side by side they become eight
-   narrow towers you scan left to right while the labels shrink to fit; in a
-   column each step is a full line at full size, and "further along" is down
-   the page — the order you already read in. */
-.ladder-rows { display: flex; flex-direction: column; gap: 4px; }
-.ladder-rows button {
-  display: flex; align-items: center; gap: var(--s3); width: 100%;
-  padding: 11px var(--s3); text-align: left;
-  border: 1px solid var(--rule-2); border-radius: var(--r); background: var(--sheet);
-  transition: background .14s var(--ease), border-color .14s var(--ease);
-}
-.ladder-rows button:hover { background: #F2F6EF; border-color: #AEB9A5; }
-.ladder-rows .rk {
-  flex: none; width: 24px; height: 24px; border-radius: 6px;
-  display: grid; place-items: center;
-  background: var(--field); color: var(--ink-3);
-  font-size: var(--t-label); font-weight: var(--w-bold); font-variant-numeric: tabular-nums;
-}
-.ladder-rows .nm { font-size: var(--t-body); color: var(--ink); flex: 1; min-width: 0; }
-/* Steps already passed: tinted, so the ladder shows how far along they are. */
-.ladder-rows .done { background: #EEF4EC; border-color: #CBDBC6; }
-.ladder-rows .done .rk { background: #DCE7DA; color: var(--plot); }
-.ladder-rows .done .nm { color: var(--plot); }
-.ladder-rows [aria-pressed="true"] {
-  background: var(--plot); border-color: var(--plot); box-shadow: var(--lift-1);
-}
-.ladder-rows [aria-pressed="true"] .rk { background: var(--plot-lift); color: var(--plot-ink); }
-.ladder-rows [aria-pressed="true"] .nm { color: var(--plot-ink); font-weight: var(--w-bold); }
-/* The tick only ever appears on the step that is chosen. */
-.ladder-rows .tick { flex: none; opacity: 0; color: var(--plot-ink); stroke-width: 2.4; }
-.ladder-rows [aria-pressed="true"] .tick { opacity: 1; }
-
 /* 5c. Status chip — rank numeral plus name. Three tints, not eight. */
 .chip {
   display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 4px;
@@ -1363,13 +1331,30 @@ tbody tr.logged, .pcard.logged { animation: settle .42s var(--ease) forwards; }
 /* --- 22. TEAM INVITATIONS ------------------------------------------------- */
 
 /* A link and the button that copies it. The field selects itself on focus,
-   so the button is a convenience, not the only way. */
-.share { display: flex; align-items: center; gap: var(--s2); width: 100%; }
+   so the button is a convenience, not the only way. Field and button are
+   the same height, and the button keeps its width whether it says Copy or
+   Copied, so nothing shifts under the pointer. */
+.share { display: flex; align-items: stretch; gap: var(--s2); width: 100%; }
 .share .share-field {
   flex: 1; min-width: 0; height: 36px; font-size: var(--t-meta);
   font-variant-numeric: tabular-nums; color: var(--ink-2); background: var(--sheet);
 }
-.share .btn { flex: none; }
+.share .btn { flex: none; height: 36px; min-width: 92px; padding: 0 12px; }
+
+/* An invitation that has been made: what happened, one line on why, and the
+   link — three lines at three weights, sharing one left edge beside the tick. */
+.invite-done {
+  display: grid; grid-template-columns: 22px 1fr; gap: 6px 12px; align-items: start;
+  padding: var(--s4); border: 1px solid #B9CCB4; background: #E4EDE1; border-radius: var(--r);
+}
+.invite-done-mark { display: grid; place-items: center; height: 22px; color: var(--plot); }
+.invite-done-mark .i { stroke-width: 2.2; }
+.invite-done-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.invite-done-title {
+  font-size: var(--t-body); font-weight: var(--w-bold); line-height: 22px;
+  color: var(--plot); overflow-wrap: anywhere;
+}
+.invite-done-note { margin: 0; font-size: var(--t-meta); line-height: 1.5; color: var(--ink-2); }
 
 /* Invitations still open, one per row: who, when, the link, and a way back. */
 .invites { display: flex; flex-direction: column; }
