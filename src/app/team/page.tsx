@@ -97,14 +97,14 @@ export default async function TeamPage() {
               <div className="invite-who">
                 <b>{i.email}</b>
                 <span className="t-quiet num">sent {ago(i.createdAt).toLowerCase()}</span>
+                <form action={revokeInvite}>
+                  <input type="hidden" name="id" value={i.id} />
+                  <button className="invite-take" type="submit" aria-label={`Take back the invitation to ${i.email}`}>
+                    <Icon name="x" size="sm" /> Take it back
+                  </button>
+                </form>
               </div>
               <ShareLink link={inviteLink(i.token)} />
-              <form action={revokeInvite}>
-                <input type="hidden" name="id" value={i.id} />
-                <button className="btn btn--quiet btn--sm" type="submit" style={{ paddingLeft: 0 }}>
-                  <Icon name="x" size="sm" /> Take it back
-                </button>
-              </form>
             </div>
           ))}
         </div>
@@ -207,14 +207,14 @@ export default async function TeamPage() {
                   <div className="invite-who">
                     <b>{i.email}</b>
                     <span className="t-quiet num">sent {ago(i.createdAt).toLowerCase()}</span>
+                    <form action={revokeInvite}>
+                      <input type="hidden" name="id" value={i.id} />
+                      <button className="invite-take" type="submit" aria-label={`Take back the invitation to ${i.email}`}>
+                        <Icon name="x" size="sm" /> Take it back
+                      </button>
+                    </form>
                   </div>
                   <ShareLink link={inviteLink(i.token)} />
-                  <form action={revokeInvite}>
-                    <input type="hidden" name="id" value={i.id} />
-                    <button className="btn btn--quiet btn--sm" type="submit" style={{ paddingLeft: 0 }}>
-                      <Icon name="x" size="sm" /> Take it back
-                    </button>
-                  </form>
                 </div>
               ))}
             </div>

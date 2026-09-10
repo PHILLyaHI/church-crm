@@ -1356,13 +1356,28 @@ tbody tr.logged, .pcard.logged { animation: settle .42s var(--ease) forwards; }
 }
 .invite-done-note { margin: 0; font-size: var(--t-meta); line-height: 1.5; color: var(--ink-2); }
 
-/* Invitations still open, one per row: who, when, the link, and a way back. */
+/* Invitations still open, one per row: who and when on the first line with
+   the way back at its end, the link on the second. Two lines, no more. */
 .invites { display: flex; flex-direction: column; }
 .invite-row { display: flex; flex-direction: column; gap: 8px; padding: var(--s3) 0; border-top: 1px solid var(--rule); }
 .invite-row:first-child { border-top: 0; padding-top: 0; }
-.invite-row .invite-who { display: flex; align-items: baseline; gap: var(--s2); }
-.invite-row .invite-who b { font-size: var(--t-meta); word-break: break-all; }
-.invite-row .invite-who .t-quiet { margin-left: auto; white-space: nowrap; }
+.invite-who { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; min-height: 28px; }
+.invite-who b { font-size: var(--t-meta); overflow-wrap: anywhere; min-width: 0; }
+.invite-who .t-quiet { margin-left: auto; white-space: nowrap; }
+.invite-who form { display: contents; }
+
+/* Taking an invitation back is the one careful action in the row, so it
+   wears the palette's one careful colour, quietly: a hairline in the
+   overdue edge, the word in the overdue ink, and the tint only on hover. */
+.invite-take {
+  display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px 0 8px;
+  border: 1px solid var(--over-edge); border-radius: 14px; background: transparent;
+  color: var(--over); font-size: var(--t-label); font-weight: var(--w-bold); letter-spacing: .02em;
+  white-space: nowrap; transition: background .14s var(--ease), border-color .14s var(--ease);
+}
+.invite-take .i-sm { width: 13px; height: 13px; stroke-width: 2.2; }
+.invite-take:hover { background: var(--over-tint); border-color: var(--over); }
+.invite-take:active { transform: translateY(1px); }
 
 /* Where an invitation link lands: one card, centred on the plot ground,
    the same at every width. */
