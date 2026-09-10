@@ -6,6 +6,21 @@ import nodemailer from "nodemailer";
  * the console so the reminder job is still testable offline.
  */
 
+/**
+ * Anything a person typed — their own name, a person's name, the church's —
+ * goes through this before it is set in HTML. A name like `<a href=…>` must
+ * arrive in the inbox as those characters, not as a link. Mail clients are not
+ * relied on to do this for us.
+ */
+function esc(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 let cached: nodemailer.Transporter | null = null;
 
 function transport() {
@@ -66,12 +81,12 @@ export function inviteEmail(opts: { inviterName: string; link: string; days: num
       <tr><td style="background:#164A2E;color:#E9F0E6;padding:16px 24px;font-size:17px;font-weight:640;letter-spacing:-.02em">Tend</td></tr>
       <tr><td style="padding:24px">
         <p style="margin:0 0 16px;font-size:15px;line-height:1.5">
-          <b>${inviterName}</b> has invited you to join their team on Tend, so they can see how the
+          <b>${esc(inviterName)}</b> has invited you to join their team on Tend, so they can see how the
           people you pray for are getting on.
         </p>
         <p style="margin:0 0 20px;font-size:15px;line-height:1.5">
           If you don't have an account yet, you can create one from the link and you'll be on
-          ${first}'s team straight away.
+          ${esc(first)}'s team straight away.
         </p>
         <a href="${link}" style="display:inline-block;height:40px;line-height:40px;padding:0 18px;border-radius:8px;background:#164A2E;color:#E9F0E6;font-weight:640;text-decoration:none;font-size:15px">Accept the invitation</a>
         <p style="margin:20px 0 0;font-size:12px;color:#616C57;line-height:1.5;word-break:break-all">
@@ -125,7 +140,7 @@ export function reminderEmail(opts: {
          ${others
            .map(
              (o, i) =>
-               `<tr><td style="padding:10px 12px;font-size:13px;font-weight:640;${i ? "border-top:1px solid #D8DFD2" : ""}">${o.name}</td>
+               `<tr><td style="padding:10px 12px;font-size:13px;font-weight:640;${i ? "border-top:1px solid #D8DFD2" : ""}">${esc(o.name)}</td>
                 <td style="padding:10px 12px;font-size:13px;font-weight:640;color:#B3372A;text-align:right;${i ? "border-top:1px solid #D8DFD2" : ""}">${o.days} days</td></tr>`,
            )
            .join("")}
@@ -139,7 +154,7 @@ export function reminderEmail(opts: {
       <tr><td style="background:#164A2E;color:#E9F0E6;padding:16px 24px;font-size:17px;font-weight:640;letter-spacing:-.02em">Tend</td></tr>
       <tr><td style="padding:24px">
         <p style="margin:0 0 16px;font-size:15px;line-height:1.5">
-          You haven't contacted <b>${lead.name}</b> for ${intervalWords}. That's
+          You haven't contacted <b>${esc(lead.name)}</b> for ${intervalWords}. That's
           ${lead.days === 1 ? "a day" : `${lead.days} days`} past the interval you set for them.
         </p>
         ${othersHtml}
@@ -147,7 +162,7 @@ export function reminderEmail(opts: {
       </td></tr>
       <tr><td style="padding:12px 24px 20px;border-top:1px solid #D8DFD2;font-size:11px;color:#616C57;line-height:1.6">
         One email a day at ${hour}, and only when someone is overdue. Never on a Sunday.<br>
-        ${churchName} · Tend · <a href="${appUrl}/admin/reminders" style="color:#215E7C">Change when these arrive</a>
+        ${esc(churchName)} · Tend · <a href="${appUrl}/admin/reminders" style="color:#215E7C">Change when these arrive</a>
       </td></tr>
     </table>
   </td></tr></table>
