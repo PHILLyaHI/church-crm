@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Icon } from "@/components/Icons";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { db } from "@/lib/db";
 import { TOKEN_RE, lookupInvite } from "@/lib/team";
 
 export const metadata = { title: "Sign in — Tend" };
@@ -85,9 +86,16 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const invite = rawInvite && TOKEN_RE.test(rawInvite) ? rawInvite : null;
 
   // Already in: an invitation goes back to its page to be answered; without
-  // one the root decides where they land.
+  // one the root decides where they land. But a session only counts if its
+  // user still exists. The root sends a cookie for a deleted account here,
+  // and if this page sent it straight back the two would bounce each other
+  // forever — so that cookie lands here as signed out, and signing in
+  // overwrites it.
   const session = await auth();
-  if (session?.user?.id) redirect(invite ? `/join/${invite}` : "/");
+  const known = session?.user?.id
+    ? await db.user.findUnique({ where: { id: session.user.id }, select: { id: true } })
+    : null;
+  if (known) redirect(invite ? `/join/${invite}` : "/");
 
   // A real, open invitation changes what this page is for, and says so.
   const found = invite ? await lookupInvite(invite) : null;
