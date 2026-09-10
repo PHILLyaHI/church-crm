@@ -4,6 +4,13 @@ import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { signIn, signInProblem } from "@/auth";
 import { db } from "@/lib/db";
+import { TOKEN_RE, acceptInvite } from "@/lib/team";
+
+/** A team invitation riding along with the form, if it is shaped like one. */
+function inviteToken(form: FormData) {
+  const raw = String(form.get("invite") ?? "");
+  return TOKEN_RE.test(raw) ? raw : null;
+}
 
 /** An error always belongs to the field that caused it. */
 export type AuthState = { field: "name" | "email" | "password" | "confirm"; message: string } | null;
@@ -24,9 +31,12 @@ export async function signInAction(_prev: AuthState, form: FormData): Promise<Au
   if (!email) return { field: "email", message: "Enter your email." };
   if (!password) return { field: "password", message: "Enter your password." };
 
+  // With an invitation in hand they go back to it, signed in, and say yes
+  // there. Without one the root decides: their people, or first run.
+  const invite = inviteToken(form);
+
   try {
-    // The root decides where they land: their people, or first run.
-    await signIn("credentials", { email, password, redirectTo: "/" });
+    await signIn("credentials", { email, password, redirectTo: invite ? `/join/${invite}` : "/" });
   } catch (error) {
     // A wrong password throws an AuthError; the redirect on success throws too,
     // and that one has to keep going.
@@ -58,18 +68,22 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
   // anyone — so on an empty database the first account through the door is
   // the admin. Every account after it is an ordinary leader.
   const first = (await db.user.count()) === 0;
+  const invite = inviteToken(form);
 
+  let userId: string;
   try {
-    await db.user.create({
+    const user = await db.user.create({
       data: {
         name,
         email,
         passwordHash: await bcrypt.hash(password, 10),
         role: first ? "admin" : "leader",
-        // Nobody above them until an admin says so.
+        // Nobody above them until a leader invites them or an admin says so.
         leaderId: null,
       },
+      select: { id: true },
     });
+    userId = user.id;
   } catch (error) {
     if (isDuplicate(error)) {
       return { field: "email", message: "That email already has an account. Sign in instead." };
@@ -77,8 +91,13 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
     throw error;
   }
 
+  // An account made from an invitation link is on that team the moment it
+  // exists. If the link has gone stale the join page says so; the account
+  // is still made.
+  if (invite) await acceptInvite(invite, userId);
+
   try {
-    await signIn("credentials", { email, password, redirectTo: "/welcome" });
+    await signIn("credentials", { email, password, redirectTo: invite ? `/join/${invite}` : "/welcome" });
   } catch (error) {
     if (error instanceof AuthError) {
       return { field: "password", message: "The account is made. Sign in to carry on." };

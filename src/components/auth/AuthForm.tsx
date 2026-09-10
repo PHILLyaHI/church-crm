@@ -12,11 +12,13 @@ type Props = {
   head?: React.ReactNode;
   /** Phone only: what sits under them. */
   foot?: React.ReactNode;
+  /** A team invitation this sign-in or sign-up should accept on the way through. */
+  invite?: string;
 };
 
 const SHEET_ID = "auth-sheet";
 
-export function AuthForm({ mode, variant, head, foot }: Props) {
+export function AuthForm({ mode, variant, head, foot, invite }: Props) {
   const register = mode === "up";
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     register ? registerAction : signInAction,
@@ -36,6 +38,7 @@ export function AuthForm({ mode, variant, head, foot }: Props) {
 
   const fields = (
     <>
+      {invite && <input type="hidden" name="invite" value={invite} />}
       {register && (
         <label className="field">
           <span className="label">Your name</span>

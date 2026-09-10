@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/permissions";
+import { wouldLoop } from "@/lib/team";
 import { fullSync, getConfig } from "@/lib/airtable";
 import { runFollowUps } from "@/lib/reminders";
 import { joinMapping, splitMapping } from "@/components/admin/mapping";
@@ -95,23 +96,6 @@ export async function setRole(form: FormData): Promise<void> {
 
   revalidatePath("/admin");
   back("/admin", "msg", `${user!.name} is now a ${role === "higher_leader" ? "higher leader" : role}.`);
-}
-
-/** Nobody may end up above themselves; the tree has to stay a tree. */
-async function wouldLoop(userId: string, leaderId: string) {
-  let cursor: string | null = leaderId;
-  const walked = new Set<string>();
-  while (cursor) {
-    if (cursor === userId) return true;
-    if (walked.has(cursor)) return true;
-    walked.add(cursor);
-    const up: { leaderId: string | null } | null = await db.user.findUnique({
-      where: { id: cursor },
-      select: { leaderId: true },
-    });
-    cursor = up?.leaderId ?? null;
-  }
-  return false;
 }
 
 export async function linkLeader(form: FormData): Promise<void> {

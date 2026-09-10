@@ -3,10 +3,20 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Icon } from "@/components/Icons";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { TOKEN_RE, lookupInvite } from "@/lib/team";
 
 export const metadata = { title: "Sign in — Tend" };
 
-type Search = { register?: string };
+type Search = { register?: string; invite?: string };
+
+/** The two tab links, keeping an invitation in hand across the switch. */
+function href(register: boolean, invite: string | null) {
+  const q = new URLSearchParams();
+  if (register) q.set("register", "1");
+  if (invite) q.set("invite", invite);
+  const qs = q.toString();
+  return qs ? `/sign-in?${qs}` : "/sign-in";
+}
 
 /** The green panel publishes the whole colour key before anyone signs in. */
 function Aside() {
@@ -40,18 +50,14 @@ function Aside() {
   );
 }
 
-function Toggle({ mode, height }: { mode: "in" | "up"; height?: number }) {
+function Toggle({ mode, height, invite }: { mode: "in" | "up"; height?: number; invite: string | null }) {
   const style = { flex: 1, justifyContent: "center", height };
   return (
     <div className="seg mb-5" style={{ width: "100%" }}>
-      <Link href="/sign-in" style={style} aria-current={mode === "in" ? "page" : undefined}>
+      <Link href={href(false, invite)} style={style} aria-current={mode === "in" ? "page" : undefined}>
         Sign in
       </Link>
-      <Link
-        href="/sign-in?register=1"
-        style={style}
-        aria-current={mode === "up" ? "page" : undefined}
-      >
+      <Link href={href(true, invite)} style={style} aria-current={mode === "up" ? "page" : undefined}>
         Create an account
       </Link>
     </div>
@@ -75,14 +81,25 @@ function Assurance({ centred }: { centred?: boolean }) {
 }
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<Search> }) {
-  const session = await auth();
-  if (session?.user?.id) redirect("/");
+  const { register, invite: rawInvite } = await searchParams;
+  const invite = rawInvite && TOKEN_RE.test(rawInvite) ? rawInvite : null;
 
-  const { register } = await searchParams;
+  // Already in: an invitation goes back to its page to be answered; without
+  // one the root decides where they land.
+  const session = await auth();
+  if (session?.user?.id) redirect(invite ? `/join/${invite}` : "/");
+
+  // A real, open invitation changes what this page is for, and says so.
+  const found = invite ? await lookupInvite(invite) : null;
+  const inviter = found && !found.problem ? found.invite.inviter.name : null;
+
   const mode: "in" | "up" = register ? "up" : "in";
   const heading = mode === "in" ? "Sign in" : "Create an account";
-  const lede =
-    mode === "in"
+  const lede = inviter
+    ? mode === "in"
+      ? `Sign in, and you’ll be asked to join ${inviter}’s team.`
+      : `${inviter} invited you. Create your account and you’re on their team.`
+    : mode === "in"
       ? "Welcome back, whoever you are today."
       : "An admin sets what you can see once you’re in.";
 
@@ -93,18 +110,18 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
         <Aside />
         <main className="auth-main">
           <div className="auth-form">
-            <Toggle mode={mode} />
+            <Toggle mode={mode} invite={invite} />
             <h2>{heading}</h2>
             <p className="lede">{lede}</p>
-            <AuthForm key={mode} mode={mode} variant="desk" />
+            <AuthForm key={mode} mode={mode} variant="desk" invite={invite ?? undefined} />
             <p className="auth-alt">
               {mode === "in" ? (
                 <>
-                  No account yet? <Link href="/sign-in?register=1">Create one</Link>
+                  No account yet? <Link href={href(true, invite)}>Create one</Link>
                 </>
               ) : (
                 <>
-                  Already have one? <Link href="/sign-in">Sign in</Link>
+                  Already have one? <Link href={href(false, invite)}>Sign in</Link>
                 </>
               )}
             </p>
@@ -129,9 +146,10 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
           key={mode}
           mode={mode}
           variant="mob"
+          invite={invite ?? undefined}
           head={
             <>
-              <Toggle mode={mode} height={38} />
+              <Toggle mode={mode} height={38} invite={invite} />
               <h2 style={{ fontSize: "1.375rem", fontWeight: 640, letterSpacing: "-.025em" }}>
                 {heading}
               </h2>

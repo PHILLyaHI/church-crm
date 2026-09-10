@@ -46,6 +46,48 @@ export async function sendMail(opts: {
   return { delivered: true as const };
 }
 
+/** A leader asking someone to report to them. The link is the invitation. */
+export function inviteEmail(opts: { inviterName: string; link: string; days: number }) {
+  const { inviterName, link, days } = opts;
+  const first = inviterName.split(" ")[0];
+  const subject = `${inviterName} has invited you to their team on Tend`;
+
+  const text =
+    `${inviterName} has invited you to join their team on Tend, so they can see how the people you pray for are getting on.\n\n` +
+    `Open this link to accept. If you don't have an account yet, you can create one there and you'll be on ${first}'s team straight away:\n\n` +
+    `${link}\n\n` +
+    `The link works for ${days} days. If you weren't expecting this, you can ignore it.\n\n` +
+    `Tend`;
+
+  const html = `<!doctype html>
+<html><body style="margin:0;background:#EBEFE6;font-family:Archivo,'Segoe UI',Helvetica,Arial,sans-serif;color:#1A2018">
+  <table role="presentation" style="width:100%;border-collapse:collapse"><tr><td align="center" style="padding:32px 16px">
+    <table role="presentation" style="width:100%;max-width:560px;background:#fff;border:1px solid #C2CBBA;border-radius:12px;border-collapse:separate;overflow:hidden">
+      <tr><td style="background:#164A2E;color:#E9F0E6;padding:16px 24px;font-size:17px;font-weight:640;letter-spacing:-.02em">Tend</td></tr>
+      <tr><td style="padding:24px">
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.5">
+          <b>${inviterName}</b> has invited you to join their team on Tend, so they can see how the
+          people you pray for are getting on.
+        </p>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.5">
+          If you don't have an account yet, you can create one from the link and you'll be on
+          ${first}'s team straight away.
+        </p>
+        <a href="${link}" style="display:inline-block;height:40px;line-height:40px;padding:0 18px;border-radius:8px;background:#164A2E;color:#E9F0E6;font-weight:640;text-decoration:none;font-size:15px">Accept the invitation</a>
+        <p style="margin:20px 0 0;font-size:12px;color:#616C57;line-height:1.5;word-break:break-all">
+          Or paste this into your browser:<br><a href="${link}" style="color:#215E7C">${link}</a>
+        </p>
+      </td></tr>
+      <tr><td style="padding:12px 24px 20px;border-top:1px solid #D8DFD2;font-size:11px;color:#616C57;line-height:1.6">
+        The link works for ${days} days. If you weren't expecting this, you can ignore it.
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+  return { subject, text, html };
+}
+
 export type Overdue = { name: string; days: number; personId: string };
 
 /** The reminder digest: one email per leader per day, never one per person. */

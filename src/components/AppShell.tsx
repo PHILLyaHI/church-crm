@@ -18,11 +18,9 @@ export async function shellCounts(viewer: Viewer) {
       remindersPaused: true,
     },
   });
-  const reports = await db.user.count({ where: { leaderId: viewer.id } });
   return {
     people: people.length,
     overdue: people.filter((p) => urgency(p) === "over").length,
-    hasTeam: reports > 0,
   };
 }
 
@@ -54,12 +52,14 @@ export async function AppShell({
   children,
 }: Props) {
   const counts = await shellCounts(viewer);
-  const showTeam = counts.hasTeam || viewer.role === "admin" || viewer.role === "higher_leader";
   const showAdmin = viewer.role === "admin";
+  // Team is for everyone: it is where a leader builds one, not only where
+  // they look at one. Upward stays hidden — the page shows only who reports
+  // to you, never who you report to.
   const nav = [
     { key: "people" as NavKey, href: "/people", icon: "people", label: "People", count: counts.people, quiet: true },
     { key: "followups" as NavKey, href: "/follow-ups", icon: "bell", label: "Follow-ups", count: counts.overdue, quiet: false },
-    ...(showTeam ? [{ key: "team" as NavKey, href: "/team", icon: "team", label: "Team", count: 0, quiet: true }] : []),
+    { key: "team" as NavKey, href: "/team", icon: "team", label: "Team", count: 0, quiet: true },
     { key: "import" as NavKey, href: "/add", icon: "upload", label: "Add people", count: 0, quiet: true },
     ...(showAdmin ? [{ key: "admin" as NavKey, href: "/admin", icon: "admin", label: "Admin", count: 0, quiet: true }] : []),
   ];

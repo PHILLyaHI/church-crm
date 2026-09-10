@@ -43,8 +43,29 @@ model User {
   notifications Notification[]
   importBatches ImportBatch[]
   ownedConfigs  AirtableConfig[] @relation("DefaultOwner")
+  sentInvites     TeamInvite[] @relation("Inviter")
+  acceptedInvites TeamInvite[] @relation("Accepter")
 
   @@index([leaderId])
+}
+
+// A leader's invitation to someone to report to them. The token is the whole
+// credential: whoever opens the link and signs in (or signs up) joins the
+// inviter's team. Accepting sets User.leaderId; nothing else changes.
+model TeamInvite {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  email        String
+  inviterId    String
+  inviter      User      @relation("Inviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  acceptedById String?
+  acceptedBy   User?     @relation("Accepter", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedAt   DateTime?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  @@index([inviterId])
+  @@index([email])
 }
 
 // statusRank 1-8 (see lib/status.ts) · priority high|medium|low
