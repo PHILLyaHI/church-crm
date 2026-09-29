@@ -2,30 +2,37 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { Icon } from "@/components/Icons";
-import { BandLegend, LadderMark, StatusChip } from "@/components/PersonBits";
+import { BandLegend, LadderMark, StatusChip, bandCells } from "@/components/PersonBits";
+import { DateTimePick } from "@/components/DateTimePick";
 import { LogContact } from "@/components/people/LogContact";
 import { SundayBand, type SundayCell } from "@/components/people/SundayBand";
 import { LadderPick, PersonPanels, ReminderToggle } from "@/components/people/PersonControls";
 import { PersonSettings } from "@/components/people/PersonEdit";
 import { db } from "@/lib/db";
 import {
-  DAY,
+  UNKNOWN_YEAR,
   ago,
   daysOverdue,
+  daysToBirthday,
+  dueDate,
   fmtDate,
   fmtDay,
-  recentSundays,
-  sameDay,
+  fmtIso,
+  isoDay,
+  pendingFollowUps,
   span,
-  startOfDay,
+  todayIso,
+  turningAge,
   urgency,
 } from "@/lib/dates";
 import { accessToOwner, logAdminRead, requireViewer } from "@/lib/permissions";
 import { INTERVAL_CHOICES, LADDER, PRIORITIES, meetingLabel, step } from "@/lib/status";
 import {
+  addFollowUpDate,
   addNote,
   moveStatus,
   personCommand,
+  removeFollowUpDate,
   saveInterval,
   savePriority,
   setRemindersPaused,
@@ -50,7 +57,6 @@ type ContactRow = {
   happenedOn: Date;
 };
 
-const shortDate = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const atTime = (d: Date) => d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 /** Everything that has happened to the record: moves, notes, what Tend did. */
@@ -149,35 +155,43 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const first = person.name.split(" ")[0];
   const late = daysOverdue(person);
   const state = urgency(person);
-  const due = new Date(
-    startOfDay(person.lastContactAt ?? person.createdAt).getTime() + person.intervalDays * DAY,
-  );
+  const due = dueDate(person);
+  const today = todayIso();
 
-  const sundays = recentSundays(16);
-  const present = (from: number) =>
-    person.attendance.filter(
-      (a) =>
-        a.state === "present" &&
-        sundays.slice(from).some((s) => sameDay(s, new Date(a.serviceDate))),
-    ).length;
+  // The same cells the people list draws, from the same function, so a mark
+  // made on either page shows on both.
+  const band = bandCells(person.attendance, 16);
+  const present = (from: number) => band.slice(from).filter((c) => c.state === "present").length;
   const seen16 = present(0);
   const seen8 = present(8);
+  const bandDate = (i: number) => fmtIso(band[i].iso, { day: "numeric", month: "short" });
 
   /** Every Sunday in the band, each one answerable on its own. */
-  const cells: SundayCell[] = sundays.map((s, i) => {
-    const hit = person.attendance.find((a) => sameDay(new Date(a.serviceDate), s));
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return {
-      iso: `${s.getFullYear()}-${pad(s.getMonth() + 1)}-${pad(s.getDate())}`,
-      label: s.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" }),
-      state: hit?.state ?? null,
-      isLast: i === sundays.length - 1,
-    };
-  });
+  const cells: SundayCell[] = band.map((c, i) => ({
+    iso: c.iso,
+    label: fmtIso(c.iso, { weekday: "short", day: "numeric", month: "long" }),
+    state: c.state,
+    isLast: i === band.length - 1,
+  }));
 
   const intervals = INTERVAL_CHOICES.includes(person.intervalDays)
     ? INTERVAL_CHOICES
     : [...INTERVAL_CHOICES, person.intervalDays].sort((a, b) => a - b);
+
+  const scheduled = pendingFollowUps(person).map(isoDay);
+
+  const birthdayIso = person.birthday ? isoDay(person.birthday) : null;
+  const birthdayText = (() => {
+    if (!person.birthday || !birthdayIso) return null;
+    const known = Number(birthdayIso.slice(0, 4)) !== UNKNOWN_YEAR;
+    const day = fmtIso(birthdayIso, known ? { day: "numeric", month: "long", year: "numeric" } : { day: "numeric", month: "long" });
+    const away = daysToBirthday(person.birthday, today);
+    const age = turningAge(person.birthday, today);
+    const when = away === 0 ? "today" : away === 1 ? "tomorrow" : away <= 30 ? `in ${away} days` : null;
+    const turns = age !== null ? `turns ${age}` : null;
+    const tail = [turns, when].filter(Boolean).join(" ");
+    return tail ? `${day} · ${tail}` : day;
+  })();
 
   const noEditing = (
     <span className="right">
@@ -200,9 +214,9 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       <div className="band-wrap">
         <SundayBand personId={person.id} name={person.name} sundays={cells} canWrite={canWrite} />
         <div className="band-scale">
-          <span>{shortDate(sundays[0])}</span>
-          <span>{shortDate(sundays[8])}</span>
-          <span className="nowlab">{shortDate(sundays[15])} · last Sunday</span>
+          <span>{bandDate(0)}</span>
+          <span>{bandDate(8)}</span>
+          <span className="nowlab">{bandDate(15)} · last Sunday</span>
         </div>
       </div>
       <div className="mt-4">
@@ -244,20 +258,45 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     </>
   );
 
+  // One form: a chip posts its own number; Custom posts "custom" and the number
+  // typed beside it. The custom field opens under a <details>, so it needs no
+  // JavaScript and stays out of the way until someone wants it.
   const intervalPicker = canWrite ? (
-    <form className="interval mt-2" action={saveInterval}>
+    <form className="interval-form mt-2" action={saveInterval}>
       <input type="hidden" name="id" value={person.id} />
-      {intervals.map((d) => (
-        <button
-          key={d}
-          className="fchip"
-          name="days"
-          value={d}
-          aria-pressed={d === person.intervalDays}
-        >
-          {span(d)}
-        </button>
-      ))}
+      <div className="interval">
+        {intervals.map((d) => (
+          <button
+            key={d}
+            className="fchip"
+            name="days"
+            value={d}
+            aria-pressed={d === person.intervalDays}
+          >
+            {span(d)}
+          </button>
+        ))}
+      </div>
+      <details className="interval-custom">
+        <summary className="fchip">Custom…</summary>
+        <div className="interval-custom-body">
+          <span>Every</span>
+          <input
+            className="input"
+            type="number"
+            name="custom"
+            min={1}
+            max={365}
+            inputMode="numeric"
+            defaultValue={person.intervalDays}
+            aria-label="Days between contacts"
+          />
+          <span>days</span>
+          <button className="btn btn--primary btn--sm" name="days" value="custom">
+            Set
+          </button>
+        </div>
+      </details>
     </form>
   ) : (
     <div className="interval mt-2 ro-mask">
@@ -299,12 +338,50 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     </div>
   );
 
+  /** Particular days to follow up, on top of the interval: an event, a hard week. */
+  const datesPicker = (
+    <div className="sched">
+      <span className="label">Also on these days</span>
+      {scheduled.length > 0 ? (
+        <div className="sched-list">
+          {scheduled.map((iso) => (
+            <form key={iso} action={removeFollowUpDate} className="sched-chip">
+              <input type="hidden" name="id" value={person.id} />
+              <input type="hidden" name="date" value={iso} />
+              <span className="num">{fmtIso(iso, { weekday: "short", day: "numeric", month: "short" })}</span>
+              {canWrite && (
+                <button type="submit" aria-label={`Remove ${iso}`}>
+                  <Icon name="x" size="sm" />
+                </button>
+              )}
+            </form>
+          ))}
+        </div>
+      ) : (
+        <p className="t-quiet" style={{ fontSize: ".8125rem" }}>
+          None. Add a day when there is a reason to reach out then.
+        </p>
+      )}
+      {canWrite && (
+        <form action={addFollowUpDate} className="sched-add">
+          <input type="hidden" name="id" value={person.id} />
+          <DateTimePick dateName="date" defaultDate={today} today={today} allow="future" />
+          <button className="btn btn--ghost btn--sm" type="submit">
+            <Icon name="plus" size="sm" /> Add day
+          </button>
+        </form>
+      )}
+    </div>
+  );
+
   /* ---- the three cards that now live behind the three dots ---- */
 
   const followUpContent = (
     <>
       <span className="label">Contact every</span>
       {intervalPicker}
+      <div className="divider" />
+      {datesPicker}
       <div className="divider" />
       <dl className="kv">
         <dt>Last contact</dt>
@@ -336,6 +413,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       <dd className="num">{person.phone ? <a href={`tel:${person.phone}`}>{person.phone}</a> : "—"}</dd>
       <dt>Email</dt>
       <dd>{person.email ? <a href={`mailto:${person.email}`}>{person.email}</a> : "—"}</dd>
+      <dt>Birthday</dt>
+      <dd className="num">{birthdayText ?? "—"}</dd>
       <dt>Added</dt>
       <dd className="num">{fmtDate(person.createdAt)}</dd>
       {!canWrite && (
@@ -346,6 +425,25 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       )}
     </dl>
   );
+
+  // The three dots, the same on both shells: settings about the person, and
+  // for whoever can write, editing their details.
+  const settingsProps = {
+    person: {
+      id: person.id,
+      name: person.name,
+      phone: person.phone,
+      email: person.email,
+      birthday: birthdayIso,
+    },
+    canWrite,
+    paused: person.remindersPaused,
+    personAction: personCommand,
+    followUp: followUpContent,
+    priority: priorityPicker,
+    details: detailsContent,
+    reminderToggle: reminderToggleEl,
+  };
 
   return (
     <AppShell
@@ -359,26 +457,14 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         </>
       }
       title={person.name}
+      back={{ href: "/people", label: "People" }}
       actions={
         <div className="row gap-sm">
           {canWrite && logContactButton}
-          <PersonSettings
-            person={{
-              id: person.id,
-              name: person.name,
-              phone: person.phone,
-              email: person.email,
-            }}
-            canWrite={canWrite}
-            paused={person.remindersPaused}
-            personAction={personCommand}
-            followUp={followUpContent}
-            priority={priorityPicker}
-            details={detailsContent}
-            reminderToggle={reminderToggleEl}
-          />
+          <PersonSettings {...settingsProps} />
         </div>
       }
+      mobileActions={<PersonSettings {...settingsProps} triggerClassName="m-iconbtn" />}
       thumb={canWrite ? logContactButton : undefined}
     >
       <div className="plot-page">
@@ -521,6 +607,9 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                   as often as they move up, and a second full-width button for
                   the way down would have implied it was the rarer thing. */}
               {canWrite && (
+                <p className="stepper-hint">Tap an arrow to change their status.</p>
+              )}
+              {canWrite && (
                 <div className="stepper">
                   <form action={moveStatus.bind(null, person.id, person.statusRank - 1)}>
                     <button
@@ -528,11 +617,11 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                       disabled={person.statusRank <= 1}
                       aria-label={
                         person.statusRank > 1
-                          ? `Move down to ${step(person.statusRank - 1).name}`
+                          ? `Move back to ${step(person.statusRank - 1).name}`
                           : "Already at the first step"
                       }
                     >
-                      <Icon name="minus" />
+                      <Icon name="left" />
                     </button>
                   </form>
                   <span className="stepper-now">
@@ -545,11 +634,11 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                       disabled={person.statusRank >= 8}
                       aria-label={
                         person.statusRank < 8
-                          ? `Move up to ${step(person.statusRank + 1).name}`
+                          ? `Move forward to ${step(person.statusRank + 1).name}`
                           : "Already at the last step"
                       }
                     >
-                      <Icon name="plus" />
+                      <Icon name="arrow-r" />
                     </button>
                   </form>
                 </div>
@@ -598,6 +687,9 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                 <span className="label">Contact every</span>
                 {intervalPicker}
               </div>
+              <div className="m-row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                {datesPicker}
+              </div>
               <div className="m-row">
                 <span className="grow">{state === "over" ? "Was due" : "Due"}</span>
                 <b className="num" style={state === "over" ? { color: "var(--over)" } : undefined}>
@@ -641,6 +733,14 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
                 <span className="grow">Email</span>
                 {person.email ? (
                   <a href={`mailto:${person.email}`}>{person.email}</a>
+                ) : (
+                  <span className="t-quiet">—</span>
+                )}
+              </div>
+              <div className="m-row">
+                <span className="grow">Birthday</span>
+                {birthdayText ? (
+                  <span className="num" style={{ textAlign: "right" }}>{birthdayText}</span>
                 ) : (
                   <span className="t-quiet">—</span>
                 )}

@@ -81,6 +81,12 @@ model Person {
   priority         String    @default("medium")
   intervalDays     Int       @default(14)
   lastContactAt    DateTime?
+  // Calendar dates, stored at 12:00 UTC so the day is the same in any time
+  // zone the server runs in. A birthday whose year is unknown uses 1904.
+  birthday         DateTime?
+  // Extra follow-up days on top of the interval. A date counts until a
+  // contact is logged on or after it; the earliest outstanding one wins.
+  followUpDates    DateTime[] @default([])
   snoozedUntil     DateTime?
   remindersPaused  Boolean   @default(false)
   statusChangedAt  DateTime  @default(now())

@@ -1244,10 +1244,14 @@ tbody tr.logged, .pcard.logged { animation: settle .42s var(--ease) forwards; }
 .band-now:hover { background: #D7E0CE; }
 .band-now:active { transform: scale(.9); }
 .band-now.on { background: var(--plot); box-shadow: 0 0 0 1.5px var(--plot-deep); }
-.band-now.not-there {
+/* The list's cells wear the same three states as the profile's, so a Sunday
+   marked on one page looks the same on the other. */
+.band-now.away {
   background: repeating-linear-gradient(45deg, var(--rule-2) 0 2px, transparent 2px 4px);
   box-shadow: inset 0 0 0 1px var(--rule-2), 0 0 0 1.5px var(--plot);
 }
+.band-now.absent { background: var(--field-2); box-shadow: inset 0 0 0 1px var(--rule-2), 0 0 0 1.5px var(--plot); }
+.band i.absent { background: var(--field-2); box-shadow: inset 0 0 0 1px var(--rule-2); }
 .band-now.is-pending { opacity: .55; pointer-events: none; }
 
 /* The quick-mark dialog: two big answers, not a form. Present borrows the
@@ -1387,3 +1391,52 @@ tbody tr.logged, .pcard.logged { animation: settle .42s var(--ease) forwards; }
 /* Beside the invitation column the beds have less room: three across, not four. */
 .plots--3 { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 1280px) { .plots--3 { grid-template-columns: repeat(2, 1fr); } }
+
+/* --- 23. PERSON PAGE: WAY BACK, STATUS ARROWS, CUSTOM FOLLOW-UP, BIRTHDAY -- */
+
+/* A thin way back above the name on a phone: small, light, and a real tap
+   target. The name stays the heading underneath it. */
+.m-top > .m-back {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 32px; margin: -4px 0 4px -2px;
+  padding: 0 8px 0 2px; border-radius: 16px;
+  color: var(--plot-ink); font-size: var(--t-meta); font-weight: var(--w-reg); letter-spacing: .01em;
+}
+.m-top > .m-back .i-sm { stroke-width: 1.4; }
+.m-top > .m-back:active { background: var(--plot-lift); }
+.m-top-row .m-iconbtn { flex: none; }
+
+/* Says what the arrows do before anyone has to guess. */
+.stepper-hint { font-size: var(--t-meta); color: var(--ink-2); margin: 0 0 -4px; }
+
+/* Custom interval: a chip that opens into "Every [n] days  Set". */
+.interval-form { display: flex; flex-direction: column; gap: 8px; }
+.interval-custom > summary { list-style: none; cursor: pointer; display: inline-flex; width: max-content; }
+.interval-custom > summary::-webkit-details-marker { display: none; }
+.interval-custom[open] > summary { background: var(--plot); border-color: var(--plot); color: var(--plot-ink); font-weight: var(--w-bold); }
+.interval-custom-body {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: var(--t-meta); color: var(--ink-2);
+}
+.interval-custom-body .input { width: 76px; height: 36px; text-align: center; font-variant-numeric: tabular-nums; }
+.interval-custom-body .btn { height: 36px; }
+
+/* Particular follow-up days: each one a chip with a way to take it off. */
+.sched { display: flex; flex-direction: column; gap: 8px; }
+.sched > .label { display: block; }
+.sched-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.sched-chip {
+  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 4px 0 12px;
+  border: 1px solid var(--rule-2); border-radius: 16px; background: var(--sheet);
+  font-size: var(--t-meta); font-weight: var(--w-bold); color: var(--plot);
+}
+.sched-chip button {
+  display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--ink-3);
+}
+.sched-chip button:hover { background: var(--over-tint); color: var(--over); }
+.sched-add { display: flex; align-items: stretch; gap: 8px; }
+.sched-add .when { flex: 1; min-width: 0; }
+.sched-add .btn { flex: none; height: auto; }
+.when--single { grid-template-columns: 1fr; }
+
+/* Birthday: day, month, year — three short lists in a row. */
+.bday { display: grid; grid-template-columns: 0.8fr 1.4fr 1fr; gap: 8px; }

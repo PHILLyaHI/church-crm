@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { logContact, setStatus } from "@/lib/contact";
 import { accessToOwner, requireViewer } from "@/lib/permissions";
-import { DAY, startOfDay } from "@/lib/dates";
+import { DAY, isIsoDay, isoDay, isoMidnight, isoNoon, parseBirthday, startOfDay, todayIso } from "@/lib/dates";
 import { MEETING_KINDS, PRIORITIES } from "@/lib/status";
 import type { Viewer } from "@/lib/permissions";
 
@@ -45,13 +45,55 @@ export async function savePriority(formData: FormData) {
   done(personId);
 }
 
+/**
+ * The interval. A chip posts its own number; "Custom" posts the word custom
+ * and the number typed beside it, so one form carries both.
+ */
 export async function saveInterval(formData: FormData) {
   const personId = String(formData.get("id") ?? "");
-  const days = Number(formData.get("days"));
+  const raw = String(formData.get("days") ?? "");
+  const days = Math.round(Number(raw === "custom" ? formData.get("custom") : raw));
   if (!Number.isFinite(days) || days < 1 || days > 365) return;
   if (!(await ownIt(personId))) return;
 
   await db.person.update({ where: { id: personId }, data: { intervalDays: days } });
+  done(personId);
+}
+
+/** One more follow-up day, on top of the interval. Today or later only. */
+export async function addFollowUpDate(formData: FormData) {
+  const personId = String(formData.get("id") ?? "");
+  const iso = String(formData.get("date") ?? "");
+  if (!isIsoDay(iso) || iso < todayIso()) return;
+  if (!(await ownIt(personId))) return;
+
+  const person = await db.person.findUnique({
+    where: { id: personId },
+    select: { followUpDates: true, lastContactAt: true, createdAt: true },
+  });
+  if (!person) return;
+
+  // Keep only the dates still waiting, add this one once, soonest first.
+  const lastDay = isoDay(person.lastContactAt ?? person.createdAt);
+  const kept = person.followUpDates.map(isoDay).filter((d) => d > lastDay && d !== iso);
+  const next = [...kept, iso].sort().slice(0, 24).map(isoNoon);
+
+  await db.person.update({ where: { id: personId }, data: { followUpDates: next } });
+  done(personId);
+}
+
+export async function removeFollowUpDate(formData: FormData) {
+  const personId = String(formData.get("id") ?? "");
+  const iso = String(formData.get("date") ?? "");
+  if (!isIsoDay(iso)) return;
+  if (!(await ownIt(personId))) return;
+
+  const person = await db.person.findUnique({ where: { id: personId }, select: { followUpDates: true } });
+  if (!person) return;
+  await db.person.update({
+    where: { id: personId },
+    data: { followUpDates: person.followUpDates.filter((d) => isoDay(d) !== iso) },
+  });
   done(personId);
 }
 
@@ -148,7 +190,7 @@ export async function setRemindersPaused(personId: string, paused: boolean) {
 
 // ------------------------------------------------------------------ details
 
-/** Their name, and the two ways to reach them. Nothing here is a status. */
+/** Their name, the two ways to reach them, and their birthday. Nothing here is a status. */
 export async function saveDetails(formData: FormData) {
   const personId = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -163,6 +205,7 @@ export async function saveDetails(formData: FormData) {
       name,
       phone: phone.slice(0, 40) || null,
       email: email.slice(0, 160) || null,
+      birthday: parseBirthday(formData.get("birthday")),
     },
   });
   done(personId);
@@ -182,26 +225,29 @@ export async function markAttendance(formData: FormData) {
   const raw = String(formData.get("date") ?? "");
   const state = String(formData.get("state") ?? "");
   if (!STATES.includes(state as (typeof STATES)[number])) return;
+  if (!isIsoDay(raw)) return;
   if (!(await ownIt(personId))) return;
 
-  const serviceDate = startOfDay(new Date(`${raw}T12:00:00`));
-  if (Number.isNaN(serviceDate.getTime()) || serviceDate.getDay() !== 0) return;
+  // A Sunday is a calendar day: stored at midnight UTC, whatever time zone
+  // this server or the phone that sent it happens to be in.
+  const serviceDate = isoMidnight(raw);
+  if (serviceDate.getUTCDay() !== 0) return;
 
-  const existing = await db.attendance.findUnique({
-    where: { personId_serviceDate: { personId, serviceDate } },
-    select: { state: true },
-  });
+  // Match the whole day, not one exact instant, so a row written at a
+  // different hour of the same Sunday is still found rather than doubled.
+  const sameSunday = {
+    personId,
+    serviceDate: { gte: serviceDate, lt: new Date(serviceDate.getTime() + DAY) },
+  };
+  const existing = await db.attendance.findMany({ where: sameSunday, select: { state: true } });
 
-  if (existing?.state === state) {
-    await db.attendance.delete({
-      where: { personId_serviceDate: { personId, serviceDate } },
-    });
+  if (existing.some((e) => e.state === state)) {
+    await db.attendance.deleteMany({ where: sameSunday });
   } else {
-    await db.attendance.upsert({
-      where: { personId_serviceDate: { personId, serviceDate } },
-      create: { personId, serviceDate, state },
-      update: { state },
-    });
+    await db.$transaction([
+      db.attendance.deleteMany({ where: sameSunday }),
+      db.attendance.create({ data: { personId, serviceDate, state } }),
+    ]);
   }
   done(personId);
 }

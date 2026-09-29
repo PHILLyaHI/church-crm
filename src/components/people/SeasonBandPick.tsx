@@ -3,40 +3,40 @@
 import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/Icons";
-import { recentSundays, sameDay } from "@/lib/dates";
 import { markAttendance } from "@/app/people/[id]/actions";
-
-type Att = { serviceDate: Date; state: string };
+import { cellClass, type BandCell } from "@/components/PersonBits";
 
 /**
  * The season band from the people list, with one difference: this week's box
  * is a button. The other fifteen stay history — too narrow to aim at
  * honestly — but this week is the one a leader actually needs to log without
- * leaving the list, so pressing it opens a two-choice dialog instead.
+ * leaving the list, so pressing it opens a small dialog instead.
+ *
+ * It does no date arithmetic of its own. The cells, and which Sunday each one
+ * is, arrive worked out by the server — the same server that saves the mark
+ * and draws the profile — so the two pages can never disagree about a day.
  */
 export function SeasonBandPick({
   personId,
   name,
-  attendance,
-  weeks = 16,
+  cells,
+  lastLabel,
   size,
 }: {
   personId: string;
   name: string;
-  attendance: Att[];
-  weeks?: number;
+  cells: BandCell[];
+  /** "27 September": the most recent Sunday, as a person reads it. */
+  lastLabel: string;
   size?: "sm" | "lg";
 }) {
-  const sundays = recentSundays(weeks);
   const cls = size === "sm" ? "band band--sm" : size === "lg" ? "band band--lg" : "band";
-  const last = sundays.length - 1;
-  const lastSunday = sundays[last];
-  const hit = attendance.find((a) => sameDay(new Date(a.serviceDate), lastSunday));
+  const last = cells[cells.length - 1];
 
   const [open, setOpen] = useState(false);
   const [local, setLocal] = useState<string | null | undefined>(undefined);
   const [pending, start] = useTransition();
-  const state = local === undefined ? (hit?.state ?? null) : local;
+  const state = local === undefined ? last.state : local;
 
   useEffect(() => {
     if (!open) return;
@@ -51,12 +51,7 @@ export function SeasonBandPick({
     const next = state === value ? null : value;
     const data = new FormData();
     data.set("id", personId);
-    data.set(
-      "date",
-      `${lastSunday.getFullYear()}-${String(lastSunday.getMonth() + 1).padStart(2, "0")}-${String(
-        lastSunday.getDate(),
-      ).padStart(2, "0")}`,
-    );
+    data.set("date", last.iso);
     data.set("state", value);
     setOpen(false);
     start(async () => {
@@ -66,19 +61,16 @@ export function SeasonBandPick({
   }
 
   const first = name.split(" ")[0] || name;
+  const present = cells.filter((c, i) => (i === cells.length - 1 ? state : c.state) === "present").length;
 
   return (
-    <span className={cls} role="img" aria-label={`${attendance.filter((a) => a.state === "present").length} of the last ${weeks} Sundays`}>
-      {sundays.slice(0, last).map((s) => {
-        const h = attendance.find((a) => sameDay(new Date(a.serviceDate), s));
-        const marks = [h?.state === "present" ? "on" : "", h?.state === "away" ? "away" : ""].filter(Boolean);
-        return <i key={s.toISOString()} className={marks.join(" ")} />;
-      })}
+    <span className={cls} role="img" aria-label={`${present} of the last ${cells.length} Sundays`}>
+      {cells.slice(0, -1).map((c) => (
+        <i key={c.iso} className={cellClass(c.state)} />
+      ))}
       <button
         type="button"
-        className={["band-now", state === "present" ? "on" : "", state === "absent" ? "not-there" : "", pending ? "is-pending" : ""]
-          .filter(Boolean)
-          .join(" ")}
+        className={["band-now", cellClass(state), pending ? "is-pending" : ""].filter(Boolean).join(" ")}
         aria-label={`Mark ${first} for last Sunday`}
         aria-haspopup="dialog"
         onClick={(e) => {
@@ -108,7 +100,7 @@ export function SeasonBandPick({
                 </button>
               </div>
               <div className="modal-body">
-                <p className="t-quiet mb-4">Last Sunday, {lastSunday.toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.</p>
+                <p className="t-quiet mb-4">Last Sunday, {lastLabel}.</p>
                 <div className="mark-choice">
                   <button
                     type="button"
@@ -129,6 +121,7 @@ export function SeasonBandPick({
                     Not there
                   </button>
                 </div>
+                <p className="when-note mt-3">Press the answer it already has to clear it.</p>
               </div>
             </div>
           </div>,

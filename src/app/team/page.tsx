@@ -43,6 +43,7 @@ export default async function TeamPage() {
             statusRank: true,
             lastContactAt: true,
             intervalDays: true,
+            followUpDates: true,
             createdAt: true,
             snoozedUntil: true,
             remindersPaused: true,

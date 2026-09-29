@@ -3,9 +3,17 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/Icons";
+import { BirthdayPick } from "@/components/people/BirthdayPick";
 import { saveDetails } from "@/app/people/[id]/actions";
 
-type Person = { id: string; name: string; phone: string | null; email: string | null };
+type Person = {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  /** YYYY-MM-DD, or null when not known. */
+  birthday: string | null;
+};
 
 /**
  * The three dots. One dialog holds everything that is not the person
@@ -23,6 +31,7 @@ export function PersonSettings({
   priority,
   details,
   reminderToggle,
+  triggerClassName = "icon-btn",
 }: {
   person: Person;
   canWrite: boolean;
@@ -32,6 +41,8 @@ export function PersonSettings({
   priority: React.ReactNode;
   details: React.ReactNode;
   reminderToggle?: React.ReactNode;
+  /** The dots sit on a white page on desktop and on the green header on a phone. */
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -56,7 +67,7 @@ export function PersonSettings({
   return (
     <>
       <button
-        className="icon-btn"
+        className={triggerClassName}
         aria-label="Settings"
         aria-expanded={open}
         type="button"
@@ -196,6 +207,15 @@ export function PersonSettings({
                     placeholder="them@example.com"
                   />
                 </label>
+                <div className="field">
+                  <span className="label" style={{ display: "block", marginBottom: 6 }}>
+                    Birthday
+                  </span>
+                  <BirthdayPick name="birthday" defaultValue={person.birthday} />
+                  <span className="hint">
+                    You get an email a week before, and on the day. The year can be left out.
+                  </span>
+                </div>
                 <div className="row mt-4">
                   <button className="btn btn--quiet" type="button" onClick={() => setEditing(false)}>
                     Cancel

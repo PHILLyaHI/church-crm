@@ -5,6 +5,7 @@ import { useActionState, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icons";
 import { Select } from "@/components/Select";
+import { BirthdayPick } from "@/components/people/BirthdayPick";
 import { AlertGlyph } from "@/components/admin/Glyphs";
 import { INTERVAL_CHOICES, LADDER, PRIORITIES } from "@/lib/status";
 import { span } from "@/lib/dates";
@@ -404,6 +405,16 @@ export function AddPeople({
                 </span>
                 <input className="input" name="email" placeholder="aisha@example.com" />
               </label>
+
+              <div className="field">
+                <span className="label" style={{ display: "block", marginBottom: 6 }}>
+                  Birthday{" "}
+                  <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
+                    — optional
+                  </span>
+                </span>
+                <BirthdayPick name="birthday" defaultValue={null} />
+              </div>
 
               <label className="field">
                 <span className="label">First note</span>

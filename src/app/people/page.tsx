@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Avatar, Icon } from "@/components/Icons";
-import { DueFlag, PriorityMark, StatusChip } from "@/components/PersonBits";
+import { DueFlag, PriorityMark, StatusChip, bandCells } from "@/components/PersonBits";
 import { LogContact } from "@/components/people/LogContact";
 import { SeasonBandPick } from "@/components/people/SeasonBandPick";
 import { FilterRow, FilterStrip, SortSelect } from "@/components/people/PeopleControls";
 import { readView, sortNote } from "@/components/people/view";
 import { db } from "@/lib/db";
-import { daysOverdue, fmtDate, fmtDay, span, urgency } from "@/lib/dates";
+import { daysOverdue, fmtDate, fmtDay, fmtIso, span, sundayIsos, urgency } from "@/lib/dates";
 import { requireViewer } from "@/lib/permissions";
 
 import "@/styles/people.css";
@@ -63,6 +63,10 @@ export default async function PeoplePage({
   });
 
   const empty = counts.all === 0;
+
+  // Which Sunday is "last Sunday" is decided here, on the server, once — the
+  // bands below never work it out for themselves.
+  const lastSunday = fmtIso(sundayIsos(1)[0], { day: "numeric", month: "long" });
 
   return (
     <AppShell
@@ -166,7 +170,7 @@ export default async function PeoplePage({
                           <PriorityMark priority={p.priority} />
                         </td>
                         <td className="td-live">
-                          <SeasonBandPick personId={p.id} name={p.name} attendance={p.attendance} size="sm" />
+                          <SeasonBandPick personId={p.id} name={p.name} cells={bandCells(p.attendance)} lastLabel={lastSunday} size="sm" />
                         </td>
                         <td>
                           <div className="num">{fmtDate(p.lastContactAt)}</div>
@@ -220,7 +224,7 @@ export default async function PeoplePage({
                   <PriorityMark priority={p.priority} />
                 </div>
                 <div className="pcard-band">
-                  <SeasonBandPick personId={p.id} name={p.name} attendance={p.attendance} />
+                  <SeasonBandPick personId={p.id} name={p.name} cells={bandCells(p.attendance)} lastLabel={lastSunday} />
                 </div>
                 <div className="pcard-foot">
                   <span className="pcard-last">

@@ -5,7 +5,7 @@ import { DueFlag } from "@/components/PersonBits";
 import { ResumeButton, SnoozeMenu } from "@/components/followups/Actions";
 import { FollowUpPanel } from "@/components/followups/FollowUp";
 import { db } from "@/lib/db";
-import { DAY, daysOverdue, fmtDay, span, urgency } from "@/lib/dates";
+import { daysOverdue, dueDate, fmtDay, span, urgency } from "@/lib/dates";
 import { requireViewer } from "@/lib/permissions";
 import "@/styles/followups.css";
 
@@ -23,14 +23,11 @@ type Row = {
   intervalDays: number;
   lastContactAt: Date | null;
   createdAt: Date;
+  followUpDates: Date[];
   snoozedUntil: Date | null;
   remindersPaused: boolean;
   notes: { body: string }[];
 };
-
-function dueOn(p: Row) {
-  return new Date((p.lastContactAt ?? p.createdAt).getTime() + p.intervalDays * DAY);
-}
 
 function Card({ p, mode }: { p: Row; mode: "over" | "soon" | "held" }) {
   const overdue = mode === "over";
@@ -54,7 +51,7 @@ function Card({ p, mode }: { p: Row; mode: "over" | "soon" | "held" }) {
       <p className="fu-when t-quiet">
         Last seen <span className="num">{p.lastContactAt ? fmtDay(p.lastContactAt) : "never"}</span>{" "}
         · every {span(p.intervalDays)} · {past ? "was due" : "due"}{" "}
-        <span className="num">{fmtDay(dueOn(p))}</span>
+        <span className="num">{fmtDay(dueDate(p))}</span>
       </p>
 
       {note && <p className="fu-note">“{note}”</p>}
@@ -117,6 +114,7 @@ export default async function FollowUpsPage({
       intervalDays: true,
       lastContactAt: true,
       createdAt: true,
+      followUpDates: true,
       snoozedUntil: true,
       remindersPaused: true,
       notes: {

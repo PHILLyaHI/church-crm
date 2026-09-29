@@ -103,6 +103,74 @@ export function inviteEmail(opts: { inviterName: string; link: string; days: num
   return { subject, text, html };
 }
 
+export type BirthdayNote = {
+  personId: string;
+  name: string;
+  /** The age they turn, or null when the year is not known. */
+  age: number | null;
+  when: "today" | "week";
+  /** "Monday 5 October" */
+  dayLabel: string;
+};
+
+/** Birthdays: on the day, and a week before. One email per leader per day. */
+export function birthdayEmail(opts: { items: BirthdayNote[]; appUrl: string }) {
+  const { items, appUrl } = opts;
+  const first = (n: string) => n.split(" ")[0] || n;
+  const one = items.length === 1 ? items[0] : null;
+
+  const subject = one
+    ? one.when === "today"
+      ? `It's ${first(one.name)}'s birthday today`
+      : `${first(one.name)}'s birthday is in a week`
+    : `${items.length} birthdays coming up`;
+
+  const line = (b: BirthdayNote) => {
+    const turns = b.age !== null ? `, turning ${b.age}` : "";
+    return b.when === "today" ? `${b.name} — today${turns}` : `${b.name} — ${b.dayLabel}${turns}`;
+  };
+
+  const text =
+    items.map(line).join("\n") +
+    `\n\nA message, a call or a card goes a long way.\n\n${items
+      .map((b) => `${b.name}: ${appUrl}/people/${b.personId}`)
+      .join("\n")}\n\nTend`;
+
+  const rows = items
+    .map(
+      (b, i) =>
+        `<tr><td style="padding:12px 14px;font-size:14px;${i ? "border-top:1px solid #D8DFD2" : ""}">
+           <a href="${appUrl}/people/${b.personId}" style="color:#1A2018;font-weight:640;text-decoration:none">${esc(b.name)}</a>
+           ${b.age !== null ? `<span style="color:#616C57"> · turning ${b.age}</span>` : ""}
+         </td>
+         <td style="padding:12px 14px;font-size:13px;font-weight:640;text-align:right;white-space:nowrap;color:${b.when === "today" ? "#B3372A" : "#164A2E"};${i ? "border-top:1px solid #D8DFD2" : ""}">
+           ${b.when === "today" ? "Today" : esc(b.dayLabel)}
+         </td></tr>`,
+    )
+    .join("");
+
+  const html = `<!doctype html>
+<html><body style="margin:0;background:#EBEFE6;font-family:Archivo,'Segoe UI',Helvetica,Arial,sans-serif;color:#1A2018">
+  <table role="presentation" style="width:100%;border-collapse:collapse"><tr><td align="center" style="padding:32px 16px">
+    <table role="presentation" style="width:100%;max-width:560px;background:#fff;border:1px solid #C2CBBA;border-radius:12px;border-collapse:separate;overflow:hidden">
+      <tr><td style="background:#164A2E;color:#E9F0E6;padding:16px 24px;font-size:17px;font-weight:640;letter-spacing:-.02em">Tend</td></tr>
+      <tr><td style="padding:24px">
+        <p style="margin:0 0 16px;font-size:15px;line-height:1.5">${
+          one ? (one.when === "today" ? "A birthday today:" : "A birthday in a week:") : "Birthdays coming up:"
+        }</p>
+        <table role="presentation" style="width:100%;border:1px solid #D8DFD2;border-radius:8px;border-collapse:separate;border-spacing:0;margin-bottom:20px">${rows}</table>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#4E574A">A message, a call or a card goes a long way.</p>
+      </td></tr>
+      <tr><td style="padding:12px 24px 20px;border-top:1px solid #D8DFD2;font-size:11px;color:#616C57;line-height:1.6">
+        Sent a week before a birthday and on the day. Add or change a birthday from the three dots on a person's page.
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
+
+  return { subject, text, html };
+}
+
 export type Overdue = { name: string; days: number; personId: string };
 
 /** The reminder digest: one email per leader per day, never one per person. */
@@ -130,7 +198,7 @@ export function reminderEmail(opts: {
     othersText +
     `\nOpen your follow-ups: ${appUrl}/follow-ups\n\n` +
     `One email a day at ${hour}, and only when someone is overdue. Never on a Sunday.\n` +
-    `${churchName} · Tend`;
+    `${churchName === "Tend" ? "Tend" : `${churchName} · Tend`}`;
 
   const othersHtml = others.length
     ? `<p style="margin:0 0 8px;color:#4E574A;font-size:13px">${
@@ -162,7 +230,7 @@ export function reminderEmail(opts: {
       </td></tr>
       <tr><td style="padding:12px 24px 20px;border-top:1px solid #D8DFD2;font-size:11px;color:#616C57;line-height:1.6">
         One email a day at ${hour}, and only when someone is overdue. Never on a Sunday.<br>
-        ${esc(churchName)} · Tend · <a href="${appUrl}/admin/reminders" style="color:#215E7C">Change when these arrive</a>
+        ${churchName === "Tend" ? "Tend" : `${esc(churchName)} · Tend`} · <a href="${appUrl}/admin/reminders" style="color:#215E7C">Change when these arrive</a>
       </td></tr>
     </table>
   </td></tr></table>

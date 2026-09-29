@@ -60,14 +60,21 @@ export function DateTimePick({
   dateName,
   timeName,
   defaultDate,
-  defaultTime,
+  defaultTime = "",
+  allow = "past",
+  today: todayProp,
 }: {
   dateName: string;
-  timeName: string;
+  /** Leave out for a date on its own. */
+  timeName?: string;
   defaultDate: string;
-  defaultTime: string;
+  defaultTime?: string;
+  /** A contact happened (past, the default); a follow-up is planned (future). */
+  allow?: "past" | "future";
+  /** Today where the church is. Defaults to the starting date. */
+  today?: string;
 }) {
-  const today = defaultDate;
+  const today = todayProp ?? defaultDate;
   const [date, setDate] = useState(defaultDate);
   const [time, setTime] = useState(defaultTime);
   const [open, setOpen] = useState<"date" | "time" | null>(null);
@@ -134,9 +141,9 @@ export function DateTimePick({
   const inMonth = (d: Date) => d.getMonth() === view.getMonth();
 
   return (
-    <div className="when when--custom" ref={wrap}>
+    <div className={timeName ? "when when--custom" : "when when--custom when--single"} ref={wrap}>
       <input type="hidden" name={dateName} value={date} />
-      <input type="hidden" name={timeName} value={time} />
+      {timeName && <input type="hidden" name={timeName} value={time} />}
 
       <button
         ref={dateBtn}
@@ -153,17 +160,19 @@ export function DateTimePick({
         <span>{niceDate(date, today)}</span>
       </button>
 
-      <button
-        ref={timeBtn}
-        type="button"
-        className="when-field"
-        aria-haspopup="dialog"
-        aria-expanded={open === "time"}
-        onClick={() => setOpen(open === "time" ? null : "time")}
-      >
-        <Icon name="clock" size="sm" />
-        <span className="num">{time}</span>
-      </button>
+      {timeName && (
+        <button
+          ref={timeBtn}
+          type="button"
+          className="when-field"
+          aria-haspopup="dialog"
+          aria-expanded={open === "time"}
+          onClick={() => setOpen(open === "time" ? null : "time")}
+        >
+          <Icon name="clock" size="sm" />
+          <span className="num">{time}</span>
+        </button>
+      )}
 
       {open === "date" &&
         createPortal(
@@ -202,7 +211,7 @@ export function DateTimePick({
           <div className="cal-grid">
             {grid.map((d) => {
               const iso = toIso(d);
-              const future = iso > today;
+              const future = allow === "past" ? iso > today : iso < today;
               return (
                 <button
                   key={iso}

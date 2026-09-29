@@ -1,8 +1,25 @@
 import { LADDER, step, chipClass, priClass, priLabel } from "@/lib/status";
-import { daysOverdue, urgency, recentSundays, sameDay, span } from "@/lib/dates";
+import { daysOverdue, isoDay, sundayIsos, urgency, span } from "@/lib/dates";
 import { Icon } from "@/components/Icons";
 
 type Att = { serviceDate: Date; state: string };
+
+export type BandCell = { iso: string; state: string | null };
+
+/**
+ * The band's cells, worked out once, on the server. Every band in the app is
+ * built from this, so the list and the profile always agree about which
+ * Sunday a mark belongs to.
+ */
+export function bandCells(attendance: Att[], weeks = 16): BandCell[] {
+  const byDay = new Map(attendance.map((a) => [isoDay(new Date(a.serviceDate)), a.state]));
+  return sundayIsos(weeks).map((iso) => ({ iso, state: byDay.get(iso) ?? null }));
+}
+
+/** The class a band cell wears for its state. */
+export function cellClass(state: string | null) {
+  return state === "present" ? "on" : state === "away" ? "away" : state === "absent" ? "absent" : "";
+}
 
 /**
  * The season band: one cell per Sunday, oldest left. It never wraps — it
@@ -17,20 +34,14 @@ export function SeasonBand({
   weeks?: number;
   size?: "sm" | "lg";
 }) {
-  const sundays = recentSundays(weeks);
+  const cells = bandCells(attendance, weeks);
   const cls = size === "sm" ? "band band--sm" : size === "lg" ? "band band--lg" : "band";
-  const last = sundays.length - 1;
+  const last = cells.length - 1;
   return (
-    <span className={cls} role="img" aria-label={`${attendance.filter((a) => a.state === "present").length} of the last ${weeks} Sundays`}>
-      {sundays.map((s, i) => {
-        const hit = attendance.find((a) => sameDay(new Date(a.serviceDate), s));
-        const marks = [
-          hit?.state === "present" ? "on" : "",
-          hit?.state === "away" ? "away" : "",
-          i === last ? "now" : "",
-        ].filter(Boolean);
-        return <i key={s.toISOString()} className={marks.join(" ")} />;
-      })}
+    <span className={cls} role="img" aria-label={`${cells.filter((c) => c.state === "present").length} of the last ${weeks} Sundays`}>
+      {cells.map((c, i) => (
+        <i key={c.iso} className={[cellClass(c.state), i === last ? "now" : ""].filter(Boolean).join(" ")} />
+      ))}
     </span>
   );
 }

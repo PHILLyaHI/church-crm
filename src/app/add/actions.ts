@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { requireViewer } from "@/lib/permissions";
-import { DAY, fmtDate } from "@/lib/dates";
+import { DAY, fmtDate, parseBirthday } from "@/lib/dates";
 
 const PRIORITY = z.enum(["high", "medium", "low"]);
 
@@ -65,6 +65,7 @@ export async function addOnePerson(_prev: OneResult, form: FormData): Promise<On
       statusRank: data.statusRank,
       priority: data.priority,
       intervalDays: data.intervalDays,
+      birthday: parseBirthday(form.get("birthday")),
       source: "manual",
     },
   });

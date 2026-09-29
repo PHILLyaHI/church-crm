@@ -14,6 +14,7 @@ export async function shellCounts(viewer: Viewer) {
       lastContactAt: true,
       intervalDays: true,
       createdAt: true,
+      followUpDates: true,
       snoozedUntil: true,
       remindersPaused: true,
     },
@@ -35,8 +36,10 @@ type Props = {
   actions?: React.ReactNode;
   /** Phone only: the one action in the thumb zone. */
   thumb?: React.ReactNode;
-  /** Phone only: a back link replaces the title block. */
+  /** Phone only: a thin way back, above the title. */
   back?: { href: string; label: string };
+  /** Phone only: a control at the right of the green header. */
+  mobileActions?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -49,6 +52,7 @@ export async function AppShell({
   actions,
   thumb,
   back,
+  mobileActions,
   children,
 }: Props) {
   const counts = await shellCounts(viewer);
@@ -111,23 +115,23 @@ export async function AppShell({
           </div>
         </div>
 
+        {/* No bell here: the tab bar already carries Follow-ups, with the
+            count rather than just a dot. Two doors to one room. A page one
+            level down gets a thin way back above its title, and may put its
+            own control at the right. */}
         <header className="m-top on-plot only-mob">
-          {back ? (
-            <div className="m-top-row">
-              <Link className="m-back" href={back.href}>
-                <Icon name="left" size="sm" /> {back.label}
-              </Link>
-            </div>
-          ) : (
-            // No bell here: the tab bar already carries Follow-ups, with the
-            // count rather than just a dot. Two doors to one room.
-            <div className="m-top-row">
-              <div className="grow">
-                <h1>{title}</h1>
-                {sub && <div className="m-sub">{sub}</div>}
-              </div>
-            </div>
+          {back && (
+            <Link className="m-back" href={back.href}>
+              <Icon name="left" size="sm" /> {back.label}
+            </Link>
           )}
+          <div className="m-top-row">
+            <div className="grow">
+              <h1>{title}</h1>
+              {sub && <div className="m-sub">{sub}</div>}
+            </div>
+            {mobileActions}
+          </div>
         </header>
 
         <div className="content">

@@ -48,7 +48,7 @@ GET /api/cron/follow-ups?key=$CRON_KEY
 ```
 
 Point a scheduler at that once a day. Add `&force=1` to bypass the Sunday skip when testing.
-On Vercel, `vercel.json` already schedules it for 07:00 daily; set `CRON_SECRET` and Vercel
+On Vercel, `vercel.json` schedules it daily at 15:00 UTC (08:00 Pacific in summer, 07:00 in winter); set `CRON_SECRET` and Vercel
 Cron sends it as a Bearer token, so no secret has to live in this repo.
 
 **Hierarchy.** A higher leader reads their *direct* sub-leaders' lists, read-only, and the

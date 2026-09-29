@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Avatar, Icon } from "@/components/Icons";
 import { DueFlag, PriorityMark, SeasonBand, StatusChip } from "@/components/PersonBits";
 import { db } from "@/lib/db";
-import { daysOverdue, fmtDate, recentSundays, span, urgency } from "@/lib/dates";
+import { daysOverdue, fmtDate, isoMidnight, span, sundayIsos, urgency } from "@/lib/dates";
 import { accessToOwner, requireViewer } from "@/lib/permissions";
 
 const WEEKS = 16;
@@ -34,12 +34,13 @@ export default async function SubLeaderPage({ params }: { params: Promise<{ id: 
       statusRank: true,
       priority: true,
       intervalDays: true,
+      followUpDates: true,
       lastContactAt: true,
       createdAt: true,
       snoozedUntil: true,
       remindersPaused: true,
       attendance: {
-        where: { serviceDate: { gte: recentSundays(WEEKS)[0] } },
+        where: { serviceDate: { gte: isoMidnight(sundayIsos(WEEKS)[0]) } },
         select: { serviceDate: true, state: true },
       },
     },
